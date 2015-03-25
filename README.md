@@ -1,6 +1,7 @@
 # FFR125-g4-robot
 no description added yet
 
+```C
 #include <Servo.h>
 
 Servo ServoL;
@@ -34,9 +35,8 @@ void loop() // Main loop auto-repeats
 
 }
 
-
-
 float volts(int adPin) // Measures volts at adPin
 { // Returns floating point voltage
   return float(analogRead(adPin)) * 5.0 / 1024.0;
 }
+```
