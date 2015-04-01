@@ -1,10 +1,16 @@
 #include <Servo.h>
 
-int forwardSpeed = 20; // interval: [-100, 100]
+int forwardSpeed = 40; // interval: [-100, 100]
 int backwardSpeed = -20; // interval: [-100, 100]
 int turningSpeed = 10; // interval: [-100, 100]
 int backingTimeThreshold = 1000; // milliseconds? 1 second?
 int turningTimeThreshold = 1000; // milliseconds? 1 second?
+const int speakerPin = 4;
+const int redLEDPin = 13;
+const int leftEyePin = A3;
+const int rightEyePin = A5;
+const int leftWhiskerPin = 8;
+const int rightWhiskerPin = 9;
 int motorLPin = 11;
 int motorRPin = 12;
 
@@ -23,10 +29,11 @@ long frequency;
 
 void setup() // Built-in initialization block
 {
-  tone(4, 3000, 1000); // Play tone for 1 second
-  delay(1000); // Delay to finish tone
-  pinMode(10, INPUT); 
-  pinMode(9, OUTPUT); // Left IR LED & Receiver
+  tone(speakerPin, 4000, 100); // Play tone for 1 second
+  delay(100); // Delay to finish tone
+  pinMode(redLEDPin, OUTPUT); 
+  pinMode(leftWhiskerPin, INPUT); // Left IR LED & Receiver
+  pinMode(rightWhiskerPin, INPUT); // Left IR LED & Receiver
   Serial.begin(9600); // Set data rate to 9600 bps
   ServoL.attach(motorLPin);
   ServoR.attach(motorRPin);
@@ -47,8 +54,8 @@ void loop() // Main loop auto-repeats
     } else if (mineDetected) {
       currentState = 2; // do something with mine
     } else { // if nothing detected, move forward
-      ServoL.writeMicroseconds(convertSpeed(forwardSpeed));
-      ServoR.writeMicroseconds(convertSpeed(forwardSpeed));
+      ServoL.writeMicroseconds(convertSpeedL(forwardSpeed));
+      ServoR.writeMicroseconds(convertSpeedR(forwardSpeed));
     }
   } else if (currentState == 1) { // avoid the obstacle
     stopRobot();
@@ -62,8 +69,8 @@ void loop() // Main loop auto-repeats
       isCurrentlyBacking = true;
     } else {
       if (millis() - backingStartTime < backingTimeThreshold) {
-        ServoL.writeMicroseconds(convertSpeed(backwardSpeed));
-        ServoR.writeMicroseconds(convertSpeed(backwardSpeed));
+        ServoL.writeMicroseconds(convertSpeedL(backwardSpeed));
+        ServoR.writeMicroseconds(convertSpeedR(backwardSpeed));
       } else {
         isCurrentlyBacking = false;
         currentState = 4; // turn the robot
@@ -75,8 +82,8 @@ void loop() // Main loop auto-repeats
       isCurrentlyTurning = true;
     } else {
       if (millis() - turningStartTime < turningTimeThreshold) {
-        ServoL.writeMicroseconds(convertSpeed(turningSpeed));
-        ServoR.writeMicroseconds(convertSpeed(-turningSpeed));
+        ServoL.writeMicroseconds(convertSpeedL(turningSpeed));
+        ServoR.writeMicroseconds(convertSpeedR(-turningSpeed));
       } else {
         isCurrentlyTurning = false;
         currentState = 0; // move forward agaidn
@@ -89,21 +96,14 @@ void loop() // Main loop auto-repeats
 }
 
 void stopRobot() {
-  ServoL.writeMicroseconds(convertSpeed(0));
-  ServoR.writeMicroseconds(convertSpeed(0));
+  ServoL.writeMicroseconds(convertSpeedL(0));
+  ServoR.writeMicroseconds(convertSpeedR(0));
 }
 
 
 bool detectObstacle() {
-  // this code uses IR sensor
-  distance=0;
-  for(frequency=38000; frequency<42000;frequency+=100){
-    int irLeft = irDetect(9, 10, frequency); // Check for object
-    distance+=irLeft;
-  }
-  Serial.println(distance);
-  //return (distance < 20);
-  return false;
+  return !digitalRead(leftWhiskerPin) || !digitalRead(rightWhiskerPin);
+  
 }
 
 
@@ -116,7 +116,7 @@ void detectObstacleIR() {
   }
   Serial.println(distance);
   //return (distance < 20);
-  return false;
+  //return false;
 }
 // IR Object Detection Function
 int irDetect(int irLedPin, int irReceiverPin, long frequency)
@@ -133,6 +133,10 @@ bool detectMine() {
   return false;
 }
 
-int convertSpeed(int s) {
-  return s*2 + 1500;
+int convertSpeedR(int s) {
+  return 1500 - s*2;
+}
+
+int convertSpeedL(int s) {
+  return 1500 + s*2;
 }
