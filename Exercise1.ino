@@ -3,8 +3,8 @@
 int forwardSpeed = 40; // interval: [-100, 100]
 int backwardSpeed = -20; // interval: [-100, 100]
 int turningSpeed = 10; // interval: [-100, 100]
-int backingTimeThreshold = 1000; // milliseconds? 1 second?
-int turningTimeThreshold = 1000; // milliseconds? 1 second?
+int backingTimephotoDetThreshold = 1000; // milliseconds? 1 second?
+int turningTimephotoDetThreshold = 1000; // milliseconds? 1 second?
 const int speakerPin = 4;
 const int redLEDPin = 13;
 const int leftEyePin = A3;
@@ -24,6 +24,10 @@ bool isCurrentlyTurning = false;
 Servo ServoL;
 Servo ServoR;
 
+// photodetector-related variables
+double photoDetThreshold;
+
+// IR-related variables
 int distance;
 long frequency;
 
@@ -37,6 +41,7 @@ void setup() // Built-in initialization block
   Serial.begin(9600); // Set data rate to 9600 bps
   ServoL.attach(motorLPin);
   ServoR.attach(motorRPin);
+  photoDetThreshold = getAveragePhotoDetThreshold();
 }
 
 void loop() // Main loop auto-repeats
@@ -59,16 +64,16 @@ void loop() // Main loop auto-repeats
     }
   } else if (currentState == 1) { // avoid the obstacle
     stopRobot();
-    // bla bla
+    currentState = 3;
   } else if (currentState == 2) { // do something with mine
     stopRobot();
-    // blabla
+    currentState = 3;
   } else if (currentState == 3) { // back the robot up
     if (!isCurrentlyBacking) {
       backingStartTime = millis();
       isCurrentlyBacking = true;
     } else {
-      if (millis() - backingStartTime < backingTimeThreshold) {
+      if (millis() - backingStartTime < backingTimephotoDetThreshold) {
         ServoL.writeMicroseconds(convertSpeedL(backwardSpeed));
         ServoR.writeMicroseconds(convertSpeedR(backwardSpeed));
       } else {
@@ -81,7 +86,7 @@ void loop() // Main loop auto-repeats
       turningStartTime = millis();
       isCurrentlyTurning = true;
     } else {
-      if (millis() - turningStartTime < turningTimeThreshold) {
+      if (millis() - turningStartTime < turningTimephotoDetThreshold) {
         ServoL.writeMicroseconds(convertSpeedL(turningSpeed));
         ServoR.writeMicroseconds(convertSpeedR(-turningSpeed));
       } else {
@@ -128,9 +133,8 @@ int irDetect(int irLedPin, int irReceiverPin, long frequency)
   return ir; // Return 1 no detect, 0 detect
 }
 
-
 bool detectMine() {
-  return false;
+  return (volts(leftEyePin) <= photoDetThreshold) || (volts(rightEyePin) <= photoDetThreshold);
 }
 
 int convertSpeedR(int s) {
@@ -139,4 +143,14 @@ int convertSpeedR(int s) {
 
 int convertSpeedL(int s) {
   return 1500 + s*2;
+}
+
+float volts(int adPin) // Measures volts at adPin
+{ // Returns floating point voltage
+  return float(analogRead(adPin)) * 5.0 / 1024.0;
+}
+
+float getAveragePhotoDetThreshold() {
+  float averageVal = volts(leftEyePin) + volts(rightEyePin))/2;
+  return averageVal/2;
 }
