@@ -1,12 +1,14 @@
 #include <Servo.h>
 
-const int forwardSpeed = 40; // interval: [-100, 100]
+const int forwardSpeed = 60; // interval: [-100, 100]
 const int backwardSpeed = -20; // interval: [-100, 100]
 const int turningSpeed = 10; // interval: [-100, 100]
 const unsigned long backingTimeThreshold = 1000; // milliseconds?
 const unsigned long turningTimeThreshold = 2000; // milliseconds?
 const int speakerPin = 4;
 const int redLEDPin = 13;
+const int leftIRLEDPin = 5;
+const int rightIRLEDPin = 6;
 const int leftEyePin = A3;
 const int rightEyePin = A5;
 const int leftWhiskerPin = 8;
@@ -29,7 +31,7 @@ int turningDirection = 1;
 float photoDetThreshold;
 float leftEyeAvg;
 float rightEyeAvg;
-float decayRate = 1 - 1 / 10.0;
+float decayRate = 1 - 1 / 20.0;
 float detectThreshold = 0.5;
 bool leftDetect;
 bool rightDetect;
@@ -42,19 +44,22 @@ void setup() // Built-in initialization block
 {
   tone(speakerPin, 4000, 100); // Play tone for 1 second
   delay(100); // Delay to finish tone
-  pinMode(redLEDPin, OUTPUT); 
+  pinMode(redLEDPin, OUTPUT);
+  pinMode(leftIRLEDPin, OUTPUT);
+  pinMode(rightIRLEDPin, OUTPUT); 
   pinMode(leftWhiskerPin, INPUT); // Left IR LED & Receiver
   pinMode(rightWhiskerPin, INPUT); // Left IR LED & Receiver
   Serial.begin(9600); // Set data rate to 9600 bps
   ServoL.attach(motorLPin);
   ServoR.attach(motorRPin);
   photoDetThreshold = getAveragePhotoDetThreshold();
+  digitalWrite(leftIRLEDPin, HIGH);
+  digitalWrite(rightIRLEDPin, HIGH);
+  Serial.println("Searching");
 }
 
 void loop() // Main loop auto-repeats
 {
-  Serial.print("current state: ");
-  Serial.println(currentState);
   // get sensor readings
   bool obstacleDetected = detectObstacle();
   updateEyes();
@@ -67,6 +72,8 @@ void loop() // Main loop auto-repeats
     if (obstacleDetected) {
       currentState = 1; // avoid the obstacle
       
+      Serial.println("Bump");
+      
       turningDirection = digitalRead(rightWhiskerPin) - digitalRead(leftWhiskerPin);
       if (turningDirection == 0){
         turningDirection = -1;
@@ -75,6 +82,16 @@ void loop() // Main loop auto-repeats
     } 
     else if (mineDetected) {
       currentState = 2; // do something with mine
+
+      turningDirection = 1;      
+      if (leftDetect) {
+        Serial.println("Left");
+      }
+      if (rightDetect) {
+        turningDirection = -1;
+        Serial.println("Right");
+      }
+        
     } 
     else { // if nothing detected, move forward
       ServoL.writeMicroseconds(convertSpeedL(forwardSpeed));
@@ -84,13 +101,22 @@ void loop() // Main loop auto-repeats
   else if (currentState == 1) { // avoid the obstacle
     stopRobot();
     currentState = 3;
+    Serial.println("Backing");
     backingStartTime = millis();
   } 
   else if (currentState == 2) { // do something with mine
     stopRobot();
     currentState = 3;
-    tone(speakerPin, 4000, 100); // Play tone for 1 second
-    delay(100); // Delay to finish tone
+
+    Serial.println("Backing");
+    tone(speakerPin, 4000, 40);
+    delay(80);
+    tone(speakerPin, 8000, 40);
+    delay(80);
+    tone(speakerPin, 4000, 250);
+    delay(250);
+    tone(speakerPin, 8000, 40);
+
     backingStartTime = millis();
   } 
   else if (currentState == 3) { // back the robot up
@@ -101,6 +127,7 @@ void loop() // Main loop auto-repeats
     else {
       isCurrentlyBacking = false;
       currentState = 4; // turn the robot
+      Serial.println("Turning");
       turningStartTime = millis();
     }
 
@@ -113,7 +140,7 @@ void loop() // Main loop auto-repeats
     else {
       isCurrentlyTurning = false;
       currentState = 0; // move forward agaidn
-
+      Serial.println("Searching");
     }
   }
 
@@ -136,9 +163,9 @@ void updateEyes() {
   float leftEye = volts(leftEyePin);
   float rightEye = volts(rightEyePin);
   leftEyeAvg = leftEyeAvg * decayRate + leftEye * (1 - decayRate);
-  Serial.println(leftEye);
-  Serial.println(leftEyeAvg);
-  Serial.println(' ');
+//  Serial.println(leftEye);
+ // Serial.println(leftEyeAvg);
+ // Serial.println(' ');
   rightEyeAvg = rightEyeAvg * decayRate + rightEye * (1 - decayRate);
   leftDetect = leftEyeAvg * detectThreshold > leftEye;
   rightDetect = rightEyeAvg * detectThreshold > rightEye;
@@ -159,7 +186,7 @@ int convertSpeedL(int s) {
 
 float volts(int adPin) // Measures volts at adPin
 { // Returns floating point voltage
-  return float(analogRead(adPin)) * 5.0 / 1024.0;
+  return float(analogRead(adPin));// * 5.0 / 1024.0;
 }
 
 float getAveragePhotoDetThreshold() {
@@ -189,5 +216,4 @@ int irDetect(int irLedPin, int irReceiverPin, long frequency)
   return ir; // Return 1 no detect, 0 detect
 }
 */
-
 
