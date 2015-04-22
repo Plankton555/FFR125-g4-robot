@@ -1,10 +1,10 @@
 #include <Servo.h>
 
-const int forwardSpeed = 60; // interval: [-100, 100]
+const int forwardSpeed = 190; // interval: [-100, 100]
 const int backwardSpeed = -20; // interval: [-100, 100]
-const int turningSpeed = 10; // interval: [-100, 100]
+const int turningSpeed = 20; // interval: [-100, 100]
 const unsigned long backingTimeThreshold = 1000; // milliseconds?
-const unsigned long turningTimeThreshold = 2000; // milliseconds?
+const unsigned long turningTimeThreshold = 1500; // milliseconds?
 const int speakerPin = 4;
 const int redLEDPin = 13;
 const int leftIRLEDPin = 5;
@@ -32,7 +32,7 @@ float photoDetThreshold;
 float leftEyeAvg;
 float rightEyeAvg;
 float decayRate = 1 - 1 / 20.0;
-float detectThreshold = 0.5;
+float detectThreshold = 0.6;
 bool leftDetect;
 bool rightDetect;
 
@@ -71,14 +71,15 @@ void loop() // Main loop auto-repeats
 
     if (obstacleDetected) {
       currentState = 1; // avoid the obstacle
-      
+
+      digitalWrite(redLEDPin, HIGH);
       Serial.println("Bump");
-      
+
       turningDirection = digitalRead(rightWhiskerPin) - digitalRead(leftWhiskerPin);
       if (turningDirection == 0){
         turningDirection = -1;
       }
-      
+
     } 
     else if (mineDetected) {
       currentState = 2; // do something with mine
@@ -91,7 +92,7 @@ void loop() // Main loop auto-repeats
         turningDirection = -1;
         Serial.println("Right");
       }
-        
+
     } 
     else { // if nothing detected, move forward
       ServoL.writeMicroseconds(convertSpeedL(forwardSpeed));
@@ -115,11 +116,12 @@ void loop() // Main loop auto-repeats
     delay(80);
     tone(speakerPin, 4000, 250);
     delay(250);
-    tone(speakerPin, 8000, 40);
 
     backingStartTime = millis();
   } 
   else if (currentState == 3) { // back the robot up
+    digitalWrite(redLEDPin, LOW);
+
     if (millis() - backingStartTime < backingTimeThreshold) {
       ServoL.writeMicroseconds(convertSpeedL(backwardSpeed));
       ServoR.writeMicroseconds(convertSpeedR(backwardSpeed));
@@ -144,8 +146,9 @@ void loop() // Main loop auto-repeats
     }
   }
 
-
+  tone(redLEDPin, 38000);
   delay(50);
+  noTone(redLEDPin);
 }
 
 void stopRobot() {
@@ -163,13 +166,18 @@ void updateEyes() {
   float leftEye = volts(leftEyePin);
   float rightEye = volts(rightEyePin);
   leftEyeAvg = leftEyeAvg * decayRate + leftEye * (1 - decayRate);
-//  Serial.println(leftEye);
- // Serial.println(leftEyeAvg);
- // Serial.println(' ');
+  Serial.print(leftEye);
+  Serial.print(' ');
+  Serial.println(rightEye);
+  Serial.print(leftEyeAvg);
+  Serial.print(' ');
+  Serial.println(rightEyeAvg);
+  Serial.println();
+  // Serial.println(' ');
   rightEyeAvg = rightEyeAvg * decayRate + rightEye * (1 - decayRate);
   leftDetect = leftEyeAvg * detectThreshold > leftEye;
   rightDetect = rightEyeAvg * detectThreshold > rightEye;
-  
+
 }
 
 bool detectMine() {
@@ -196,24 +204,26 @@ float getAveragePhotoDetThreshold() {
 
 /*
 void detectObstacleIR() {
-  // this code is not used currently
-  distance=0;
-  for(frequency=38000; frequency<42000;frequency+=100){
-    int irLeft = irDetect(9, 10, frequency); // Check for object
-    distance+=irLeft;
-  }
-  Serial.println(distance);
-  //return (distance < 20);
-  //return false;
-}
-// IR Object Detection Function
-int irDetect(int irLedPin, int irReceiverPin, long frequency)
-{
-  tone(irLedPin, frequency, 8); // IRLED 38 kHz for at least 1 ms
-  delay(1); // Wait 1 ms
-  int ir = digitalRead(irReceiverPin); // IR receiver -> ir variable
-  delay(1); // Down time before recheck
-  return ir; // Return 1 no detect, 0 detect
-}
-*/
+ // this code is not used currently
+ distance=0;
+ for(frequency=38000; frequency<42000;frequency+=100){
+ int irLeft = irDetect(9, 10, frequency); // Check for object
+ distance+=irLeft;
+ }
+ Serial.println(distance);
+ //return (distance < 20);
+ //return false;
+ }
+ // IR Object Detection Function
+ int irDetect(int irLedPin, int irReceiverPin, long frequency)
+ {
+ tone(irLedPin, frequency, 8); // IRLED 38 kHz for at least 1 ms
+ delay(1); // Wait 1 ms
+ int ir = digitalRead(irReceiverPin); // IR receiver -> ir variable
+ delay(1); // Down time before recheck
+ return ir; // Return 1 no detect, 0 detect
+ }
+ */
+
+
 
