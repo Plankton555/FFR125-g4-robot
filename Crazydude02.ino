@@ -25,6 +25,8 @@ int rightFrontEyeReading;
 int rightRightEyeReading;
 int rightBackEyeReading;
 
+bool carryingCylinder;
+
 
 /**
  * Called once before all the looping starts
@@ -40,13 +42,17 @@ void loop() {
   unsigned long startTime = millis();
 
   readSensors();
+  moveRobot();
+
   debugPrint();
   
   // do delay unless execution has taken too much time
   unsigned long timeSpent = millis() - startTime;
   if (timeSpent < UPDATE_INTERVAL) {
     delay(UPDATE_INTERVAL - timeSpent); 
-  }
+  } /*else {
+    // overdue, return from function
+  }*/
 }
 
 
@@ -95,4 +101,29 @@ void readSensors() {
   rightRightEyeReading = digitalRead(rightEye);
   rightBackEyeReading = digitalRead(backEye);
   noTone(rightIRLED);
+}
+
+void moveRobot() {
+  if (carryingCylinder) {
+    // Find safe zone and return cylinder to it
+
+  } else {
+    // Roam arena and find a cylinder
+
+  }
+}
+
+
+
+int convertSpeedR(int s) {
+  return 1500 - s*2;
+}
+
+int convertSpeedL(int s) {
+  return 1500 + s*2;
+}
+
+void stopRobot() {
+  ServoL.writeMicroseconds(convertSpeedL(0));
+  ServoR.writeMicroseconds(convertSpeedR(0));
 }

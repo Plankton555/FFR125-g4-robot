@@ -1,0 +1,27 @@
+Overall steps:
+1. Set up the robot (hardware)
+2. Make a behaviour that works acceptably
+3. If time, see if it's possible to get a neural network going.
+
+
+
+
+Two high-level states:
+1. Searching for cylinder
+2. Return to safe zone
+Robot should only perform returning behaviour if it carries a cylinder, otherwise it should find a cylinder.
+
+If in high-level state 1:
+Default behaviour is roaming the arena, searching for a cylinder
+If we enter safe zone, turn around (randomly?) and exit the safe zone
+If we have detected something, find out if it is a cylinder or a wall
+	If it is a cylinder, "grab" it
+If we are too close to a wall, avoid it
+
+If in high-level state 2:
+If we know where the safe zone is
+	Move towards
+Otherwise
+	Locate safe zone
+Make sure we haven't dropped the cylinder
+	If we have dropped it (and can't locate it), enter high-level state 1 again
