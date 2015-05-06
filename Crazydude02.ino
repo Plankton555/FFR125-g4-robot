@@ -25,23 +25,36 @@ int rightFrontEyeReading;
 int rightRightEyeReading;
 int rightBackEyeReading;
 
+
+/**
+ * Called once before all the looping starts
+ **/
 void setup() {
   setupHardwareConnections();
 }
 
+/**
+ * The actual loop function called by Arduino
+ **/
 void loop() {
   unsigned long startTime = millis();
 
   readSensors();
   debugPrint();
   
-  // delay unless execution has taken too much time
+  // do delay unless execution has taken too much time
   unsigned long timeSpent = millis() - startTime;
   if (timeSpent < UPDATE_INTERVAL) {
     delay(UPDATE_INTERVAL - timeSpent); 
   }
 }
 
+
+// *******************************************************************
+
+/**
+ * Sets up hardware connections, such as pins and sensors
+ **/
 void setupHardwareConnections() {
   pinMode(leftEye, INPUT);
   pinMode(rightEye, INPUT);
