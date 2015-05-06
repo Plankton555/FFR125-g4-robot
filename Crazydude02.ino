@@ -20,14 +20,24 @@ const unsigned long UPDATE_INTERVAL = 100; // milliseconds
 Servo servoLeft;
 Servo servoRight;
 
-int leftLeftEyeReading;
-int leftFrontEyeReading;
-int leftRightEyeReading;
-int leftBackEyeReading;
-int rightLeftEyeReading;
-int rightFrontEyeReading;
-int rightRightEyeReading;
-int rightBackEyeReading;
+float initWeight = 10;
+IRLogic leftLeftEye(initWeight);
+IRLogic leftFrontEye(initWeight);
+IRLogic leftRightEye(initWeight);
+IRLogic leftBackEye(initWeight);
+IRLogic rightLeftEye(initWeight);
+IRLogic rightFrontEye(initWeight);
+IRLogic rightRightEye(initWeight);
+IRLogic rightBackEye(initWeight);
+
+long leftLeftEyeReading;
+long leftFrontEyeReading;
+long leftRightEyeReading;
+long leftBackEyeReading;
+long rightLeftEyeReading;
+long rightFrontEyeReading;
+long rightRightEyeReading;
+long rightBackEyeReading;
 
 bool carryingCylinder = false;
 
@@ -35,6 +45,8 @@ double roam_forwardSpeed = 50;
 double roam_currentSpeed = roam_forwardSpeed;
 double roam_variance = 20;
 double roam_change = 5;
+
+unsigned long timeSincePrint;
 
 
 /**
@@ -47,26 +59,28 @@ void setup() {
 
   setupHardwareConnections();
   setupSensors();
+  timeSincePrint = millis();
 }
 
 /**
  * The actual loop function called by Arduino
  **/
 void loop() {
-  unsigned long startTime = millis();
 
   readSensors();
   moveRobot();
 
-  debugPrint();
   
   // do delay unless execution has taken too much time
-  unsigned long timeSpent = millis() - startTime;
+  unsigned long timeSpent = millis() - timeSincePrint;
   if (timeSpent < UPDATE_INTERVAL) {
-    delay(UPDATE_INTERVAL - timeSpent); 
-  } /*else {
+    //delay(UPDATE_INTERVAL - timeSpent); 
+  } else {
     // overdue, return from function
-  }*/
+
+    debugPrint();
+    timeSincePrint = millis();
+  }
 }
 
 
@@ -92,39 +106,95 @@ void setupHardwareConnections() {
 }
 
 void setupSensors() {
-
+  /*
+  for (long freq=1; freq<40000; freq += 7) {
+    leftLeftEye.mark(freq, freq%2 == 0);
+    leftFrontEye.mark(freq, freq%2 == 0);
+    leftRightEye.mark(freq, freq%2 == 0);
+    leftBackEye.mark(freq, freq%2 == 0);
+    rightLeftEye.mark(freq, freq%2 == 0);
+    rightFrontEye.mark(freq, freq%2 == 0);
+    rightRightEye.mark(freq, freq%2 == 0);
+    rightBackEye.mark(freq, freq%2 == 0);
+  }*/
 }
 
 void debugPrint() {
   Serial.print(leftLeftEyeReading);
-  Serial.print(leftFrontEyeReading);
-  Serial.print(leftRightEyeReading);
+  //Serial.print(leftFrontEyeReading);
+  //Serial.print(leftRightEyeReading);
   Serial.print(' ');
   Serial.print(rightLeftEyeReading);
-  Serial.print(rightFrontEyeReading);
-  Serial.println(rightRightEyeReading);
-  Serial.print(' ');
-  Serial.print(leftBackEyeReading);
-  Serial.print("   ");
-  Serial.println(rightBackEyeReading);
+  //Serial.print(rightFrontEyeReading);
+  //Serial.println(rightRightEyeReading);
   Serial.println();
 }
 
 void readSensors() {
-  tone(leftIRLED, 38000);
+  long currentFrequency = long(leftLeftEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(leftIRLED, currentFrequency);
   delay(1);
-  leftLeftEyeReading = digitalRead(leftEye);
-  leftFrontEyeReading = digitalRead(frontEye);
-  leftRightEyeReading = digitalRead(rightEye);
-  leftBackEyeReading = digitalRead(backEye);
+  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
   noTone(leftIRLED);
-  tone(rightIRLED, 38000);
+
+  currentFrequency = long(rightLeftEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(rightIRLED, currentFrequency);
   delay(1);
-  rightLeftEyeReading = digitalRead(leftEye);
-  rightFrontEyeReading = digitalRead(frontEye);
-  rightRightEyeReading = digitalRead(rightEye);
-  rightBackEyeReading = digitalRead(backEye);
+  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
   noTone(rightIRLED);
+
+
+  currentFrequency = long(leftFrontEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(leftIRLED, currentFrequency);
+  delay(1);
+  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
+  noTone(leftIRLED);
+
+  currentFrequency = long(rightFrontEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(rightIRLED, currentFrequency);
+  delay(1);
+  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
+  noTone(rightIRLED);
+
+
+  currentFrequency = long(leftRightEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(leftIRLED, currentFrequency);
+  delay(1);
+  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
+  noTone(leftIRLED);
+
+  currentFrequency = long(rightRightEye.getState());
+  currentFrequency = constrain(currentFrequency, 38000, 42000);
+  tone(rightIRLED, currentFrequency);
+  delay(1);
+  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
+  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
+  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
+  noTone(rightIRLED);
+
+
+
+  leftLeftEyeReading = long(leftLeftEye.getState());
+  leftFrontEyeReading = long(leftFrontEye.getState());
+  leftRightEyeReading = long(leftRightEye.getState());
+  rightLeftEyeReading = long(rightLeftEye.getState());
+  rightFrontEyeReading = long(rightFrontEye.getState());
+  rightRightEyeReading = long(rightRightEye.getState());
 }
 
 void moveRobot() {

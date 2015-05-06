@@ -2,7 +2,10 @@
 #include "IRLogic.h"
 
 IRLogic::IRLogic(double _inertia)
-  : inertia(_inertia) {}
+  : inertia(_inertia) {
+    mu = 40000.0;
+    sigma2 = 4000000;
+  }
 
 IRLogic::~IRLogic() {}
 
