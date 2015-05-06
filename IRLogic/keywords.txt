@@ -1,4 +1,5 @@
-IRLogic		KEYWORD1
-erfc		KEYWORD2
+IRLogic	KEYWORD1
+erfc	KEYWORD2
 getState	KEYWORD2
-mark		KEYWORD2
+getFrequency	KEYWORD2
+mark	KEYWORD2
