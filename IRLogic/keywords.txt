@@ -1,0 +1,4 @@
+IRLogic		KEYWORD1
+erfc		KEYWORD2
+getState	KEYWORD2
+mark		KEYWORD2
