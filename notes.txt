@@ -25,3 +25,11 @@ Otherwise
 	Locate safe zone
 Make sure we haven't dropped the cylinder
 	If we have dropped it (and can't locate it), enter high-level state 1 again
+
+
+
+
+
+
+TODO:
+We can probably not see the beacon from everywhere in the arena. A possible solution might be to scan for the beacon and, if not found, move forward a bit befor scanning again.
