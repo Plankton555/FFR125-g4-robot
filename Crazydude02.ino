@@ -7,19 +7,30 @@ const int backEye = 9;
 const int leftIRLED = 8;
 const int rightIRLED = 4;
 
-Servo ServoL;
-Servo ServoR;
+Servo servoLeft;
+Servo servoRight;
 
-int LLDetect;
-int LFDetect;
-int LRDetect;
-int LBDetect;
-int RLDetect;
-int RFDetect;
-int RRDetect;
-int RBDetect;
+int leftLeftEyeReading;
+int leftFrontEyeReading;
+int leftRightEyeReading;
+int leftBackEyeReading;
+int rightLeftEyeReading;
+int rightFrontEyeReading;
+int rightRightEyeReading;
+int rightBackEyeReading;
 
 void setup() {
+  setupHardwareConnections();
+}
+
+void loop() {
+  readSensors();
+  debugPrint();
+  
+  delay(100); 
+}
+
+void setupHardwareConnections() {
   pinMode(leftEye, INPUT);
   pinMode(rightEye, INPUT);
   pinMode(frontEye, INPUT);
@@ -29,34 +40,34 @@ void setup() {
   Serial.begin(9600);
 }
 
-void loop() {
+void debugPrint() {
+  Serial.print(leftLeftEyeReading);
+  Serial.print(leftFrontEyeReading);
+  Serial.print(leftRightEyeReading);
+  Serial.print(' ');
+  Serial.print(rightLeftEyeReading);
+  Serial.print(rightFrontEyeReading);
+  Serial.println(rightRightEyeReading);
+  Serial.print(' ');
+  Serial.print(leftBackEyeReading);
+  Serial.print("   ");
+  Serial.println(rightBackEyeReading);
+  Serial.println();
+}
+
+void readSensors() {
   tone(leftIRLED, 38000);
   delay(1);
-  LLDetect = digitalRead(leftEye);
-  LFDetect = digitalRead(frontEye);
-  LRDetect = digitalRead(rightEye);
-  LBDetect = digitalRead(backEye);
+  leftLeftEyeReading = digitalRead(leftEye);
+  leftFrontEyeReading = digitalRead(frontEye);
+  leftRightEyeReading = digitalRead(rightEye);
+  leftBackEyeReading = digitalRead(backEye);
   noTone(leftIRLED);
   tone(rightIRLED, 38000);
   delay(1);
-  RLDetect = digitalRead(leftEye);
-  RFDetect = digitalRead(frontEye);
-  RRDetect = digitalRead(rightEye);
-  RBDetect = digitalRead(backEye);
+  rightLeftEyeReading = digitalRead(leftEye);
+  rightFrontEyeReading = digitalRead(frontEye);
+  rightRightEyeReading = digitalRead(rightEye);
+  rightBackEyeReading = digitalRead(backEye);
   noTone(rightIRLED);
-  
-  Serial.print(LLDetect);
-  Serial.print(LFDetect);
-  Serial.print(LRDetect);
-  Serial.print(' ');
-  Serial.print(RLDetect);
-  Serial.print(RFDetect);
-  Serial.println(RRDetect);
-  Serial.print(' ');
-  Serial.print(LBDetect);
-  Serial.print("   ");
-  Serial.println(RBDetect);
-  Serial.println();
-  delay(100);
-  
 }
