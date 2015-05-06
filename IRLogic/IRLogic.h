@@ -5,11 +5,12 @@ class IRLogic {
   private:
     double inertia;
     double mu;
-    double sigma2;
+    double sigma;
   public:
     IRLogic();
     ~IRLogic();
     void setInertia(double _inertia);
+    void setSigma(double _sigma);
     double getState();
     unsigned int getFrequency();
     void mark(unsigned int _frequency, bool _detect);
@@ -17,6 +18,6 @@ class IRLogic {
     static const unsigned int nearFrequency = 42000;
 };
 
-double erfc(double z);
+double log_erfc(double z);
 
 #endif
