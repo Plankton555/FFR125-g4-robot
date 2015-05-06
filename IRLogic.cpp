@@ -1,7 +1,7 @@
-#include <WProgram.h>
+#include "Arduino.h"
 #include "IRLogic.h"
 
-IRLogic::IRLogic(float _inertia)
+IRLogic::IRLogic(double _inertia)
   : inertia(_inertia) {}
 
 IRLogic::~IRLogic() {}
@@ -29,8 +29,8 @@ void IRLogic::mark(double _x, bool _detect) {
 }
 
 double erfc(double z) {
-  double b, k, p, zabs;
-  zabs = abs(z);
+  double b, k, p;
+  double zabs = abs(z);
   if (zabs > 37)
     p = 0;
   else {

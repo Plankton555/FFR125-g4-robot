@@ -7,12 +7,12 @@ class IRLogic {
     double mu;
     double sigma2;
   public:
-    IRBrain(double _inertia);
-    ~IRBrain();
+    IRLogic(double _inertia);
+    ~IRLogic();
     double getState();
-    void mark(float _x, bool _detect);
+    void mark(double _x, bool _detect);
 };
 
-float erfc();
+double erfc(double z);
 
 #endif
