@@ -1,5 +1,6 @@
 #include <Servo.h>
 
+// Constants
 const int leftEye = 2;
 const int rightEye = 10;
 const int frontEye = 3;
@@ -7,6 +8,11 @@ const int backEye = 9;
 const int leftIRLED = 8;
 const int rightIRLED = 4;
 
+// Parameters
+const unsigned long UPDATE_INTERVAL = 100; // milliseconds
+
+
+// Variables
 Servo servoLeft;
 Servo servoRight;
 
@@ -24,10 +30,16 @@ void setup() {
 }
 
 void loop() {
+  unsigned long startTime = millis();
+
   readSensors();
   debugPrint();
   
-  delay(100); 
+  // delay unless execution has taken too much time
+  unsigned long timeSpent = millis() - startTime;
+  if (timeSpent < UPDATE_INTERVAL) {
+    delay(UPDATE_INTERVAL - timeSpent); 
+  }
 }
 
 void setupHardwareConnections() {
