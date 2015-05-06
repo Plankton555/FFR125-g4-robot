@@ -2,44 +2,30 @@
 #include <Servo.h>
 
 // Constants
-const int speakerPin = 2;
-const int leftEye = 10;
-const int rightEye = 8;
-const int frontEye = 9;
-const int backEye = 9;
-const int leftIRLED = 6;
-const int rightIRLED = 5;
-const int motorLPin = 11;
-const int motorRPin = 12;
+
+const byte sensorCount = 3;
+const byte LEDCount = 2;
+
+const byte sensorPin[sensorCount] = {10, 9, 8}; // left, front, right
+const byte LEDPin[LEDCount] = {6, 5};           // left, right
+
+const byte speakerPin = 2;
+const byte motorLPin = 11;
+const byte motorRPin = 12;
 
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
+const unsigned long sensorDelay = 300;     // microseconds ON time, full cycle is 3x
 
 
 // Variables
 Servo servoLeft;
 Servo servoRight;
 
-float initWeight = 10;
-IRLogic leftLeftEye(initWeight);
-IRLogic leftFrontEye(initWeight);
-IRLogic leftRightEye(initWeight);
-IRLogic leftBackEye(initWeight);
-IRLogic rightLeftEye(initWeight);
-IRLogic rightFrontEye(initWeight);
-IRLogic rightRightEye(initWeight);
-IRLogic rightBackEye(initWeight);
+IRLogic sensorState[sensorCount][LEDCount];
+boolean sensorDetect[sensorCount];
 
-long leftLeftEyeReading;
-long leftFrontEyeReading;
-long leftRightEyeReading;
-long leftBackEyeReading;
-long rightLeftEyeReading;
-long rightFrontEyeReading;
-long rightRightEyeReading;
-long rightBackEyeReading;
-
-bool carryingCylinder = false;
+boolean carryingCylinder = false;
 
 double roam_forwardSpeed = 50;
 double roam_currentSpeed = roam_forwardSpeed;
@@ -70,11 +56,11 @@ void loop() {
   readSensors();
   moveRobot();
 
-  
+
   // do delay unless execution has taken too much time
   unsigned long timeSpent = millis() - timeSincePrint;
   if (timeSpent < UPDATE_INTERVAL) {
-    //delay(UPDATE_INTERVAL - timeSpent); 
+    //delay(UPDATE_INTERVAL - timeSpent);
   } else {
     // overdue, return from function
 
@@ -90,12 +76,12 @@ void loop() {
  * Sets up hardware connections, such as pins and sensors
  **/
 void setupHardwareConnections() {
-  pinMode(leftEye, INPUT);
-  pinMode(rightEye, INPUT);
-  pinMode(frontEye, INPUT);
-  pinMode(backEye, INPUT);
-  pinMode(leftIRLED, OUTPUT);
-  pinMode(rightIRLED, OUTPUT);
+
+  for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++)
+    pinMode(sensorPin[sensorIndex], INPUT);
+
+  for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++)
+    pinMode(LEDPin[LEDIndex], OUTPUT);
 
   // Servo initialization
   servoLeft.attach(motorLPin);
@@ -106,95 +92,39 @@ void setupHardwareConnections() {
 }
 
 void setupSensors() {
-  /*
-  for (long freq=1; freq<40000; freq += 7) {
-    leftLeftEye.mark(freq, freq%2 == 0);
-    leftFrontEye.mark(freq, freq%2 == 0);
-    leftRightEye.mark(freq, freq%2 == 0);
-    leftBackEye.mark(freq, freq%2 == 0);
-    rightLeftEye.mark(freq, freq%2 == 0);
-    rightFrontEye.mark(freq, freq%2 == 0);
-    rightRightEye.mark(freq, freq%2 == 0);
-    rightBackEye.mark(freq, freq%2 == 0);
-  }*/
 }
 
 void debugPrint() {
-  Serial.print(leftLeftEyeReading);
-  //Serial.print(leftFrontEyeReading);
-  //Serial.print(leftRightEyeReading);
-  Serial.print(' ');
-  Serial.print(rightLeftEyeReading);
-  //Serial.print(rightFrontEyeReading);
-  //Serial.println(rightRightEyeReading);
-  Serial.println();
 }
 
 void readSensors() {
-  long currentFrequency = long(leftLeftEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(leftIRLED, currentFrequency);
-  delay(1);
-  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(leftIRLED);
 
-  currentFrequency = long(rightLeftEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(rightIRLED, currentFrequency);
-  delay(1);
-  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(rightIRLED);
+  unsigned int currentFrequency;
 
+  for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
+    for (byte LEDIndex = 0; LEDIndex < LEDCount ; LEDIndex++) {
+      currentFrequency = sensorState[sensorIndex][LEDIndex].getFrequency();
+      currentFrequency = constrain(currentFrequency, 38000, 42000);
+      tone(LEDPin[LEDIndex], currentFrequency);
+      
+      // Wait long enough to respond
+      delayMicroseconds(sensorDelay);
+      
+      for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
+        sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
+      noTone(LEDPin[LEDIndex]);
+      
+      // Wait for duty cycle reasons
+      delayMicroseconds(sensorDelay * 2);
+      for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
+        sensorState[writeIndex][LEDIndex].mark(currentFrequency, sensorDetect[writeIndex]);
+    }
+  }
+  
+  // Beacon detection
+  for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
+    sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
 
-  currentFrequency = long(leftFrontEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(leftIRLED, currentFrequency);
-  delay(1);
-  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(leftIRLED);
-
-  currentFrequency = long(rightFrontEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(rightIRLED, currentFrequency);
-  delay(1);
-  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(rightIRLED);
-
-
-  currentFrequency = long(leftRightEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(leftIRLED, currentFrequency);
-  delay(1);
-  leftLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  leftFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  leftRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(leftIRLED);
-
-  currentFrequency = long(rightRightEye.getState());
-  currentFrequency = constrain(currentFrequency, 38000, 42000);
-  tone(rightIRLED, currentFrequency);
-  delay(1);
-  rightLeftEye.mark(currentFrequency, !digitalRead(leftEye));
-  rightFrontEye.mark(currentFrequency, !digitalRead(frontEye));
-  rightRightEye.mark(currentFrequency, !digitalRead(rightEye));
-  noTone(rightIRLED);
-
-
-
-  leftLeftEyeReading = long(leftLeftEye.getState());
-  leftFrontEyeReading = long(leftFrontEye.getState());
-  leftRightEyeReading = long(leftRightEye.getState());
-  rightLeftEyeReading = long(rightLeftEye.getState());
-  rightFrontEyeReading = long(rightFrontEye.getState());
-  rightRightEyeReading = long(rightRightEye.getState());
 }
 
 void moveRobot() {
@@ -208,8 +138,8 @@ void moveRobot() {
 }
 
 void performRoamingBehavior() {
-  double rndNr = ((double)random(0, 100))/100;
-  double rndChange = (rndNr-0.5)*2*roam_change; // change seed here
+  double rndNr = ((double)random(0, 100)) / 100;
+  double rndChange = (rndNr - 0.5) * 2 * roam_change; // change seed here
   roam_currentSpeed += rndChange;
   // clamp the speed
   if (roam_currentSpeed < roam_forwardSpeed - roam_variance) {
@@ -227,11 +157,11 @@ void performRoamingBehavior() {
 
 
 int convertSpeedR(int s) {
-  return 1500 - s*2;
+  return 1500 - s * 2;
 }
 
 int convertSpeedL(int s) {
-  return 1500 + s*2;
+  return 1500 + s * 2;
 }
 
 void stopRobot() {
