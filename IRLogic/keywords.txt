@@ -3,3 +3,5 @@ erfc	KEYWORD2
 getState	KEYWORD2
 getFrequency	KEYWORD2
 mark	KEYWORD2
+setInertia	KEYWORD2
+setSigma	KEYWORD2
