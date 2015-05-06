@@ -25,7 +25,12 @@ int rightFrontEyeReading;
 int rightRightEyeReading;
 int rightBackEyeReading;
 
-bool carryingCylinder;
+bool carryingCylinder = false;
+
+double roam_forwardSpeed = 50;
+double roam_currentSpeed = roam_forwardSpeed;
+double roam_variance = 10;
+double roam_change = 1;
 
 
 /**
@@ -109,8 +114,24 @@ void moveRobot() {
 
   } else {
     // Roam arena and find a cylinder
-
+    performRoamingBehavior();
   }
+}
+
+void performRoamingBehavior() {
+  double rndChange = (rand()-0.5)*2*roam_change; // change seed here
+  roam_currentSpeed += rndChange;
+  // clamp the speed
+  if (roam_currentSpeed < roam_forwardSpeed - roam_variance) {
+    roam_currentSpeed = roam_forwardSpeed - roam_variance;
+  } else if (roam_currentSpeed > roam_forwardSpeed + roam_variance) {
+    roam_currentSpeed = roam_forwardSpeed + roam_variance;
+  }
+
+  // make sure keep approximately constant speed
+  double diff = roam_currentSpeed - roam_forwardSpeed;
+  ServoL.writeMicroseconds(convertSpeedL(roam_forwardSpeed + diff));
+  ServoR.writeMicroseconds(convertSpeedR(roam_forwardSpeed - diff));
 }
 
 
