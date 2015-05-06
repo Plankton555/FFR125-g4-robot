@@ -1,11 +1,18 @@
 #include "Arduino.h"
 #include "IRLogic.h"
 
+IRLogic::IRLogic() {
+	mu = 0.5;
+	sigma2 = 0.25;
+	inertia = 10.0;
+}
+
 IRLogic::IRLogic(double _inertia)
-  : inertia(_inertia) {
-    mu = 40000.0;
-    sigma2 = 4000000;
-  }
+  : inertia(_inertia)
+{
+	mu = 0.5;
+	sigma2 = 0.25;
+}
 
 IRLogic::~IRLogic() {}
 
@@ -13,22 +20,45 @@ double IRLogic::getState() {
   return mu;
 }
 
-void IRLogic::mark(double _x, bool _detect) {
-  double a, dmu, k, p, sigma, z;
+unsigned int IRLogic::getFrequency() {
+	return nearFrequency + (unsigned int) (mu * (farFrequency - nearFrequency));
+}
+
+void IRLogic::mark(uint16_t _frequency, bool _detect) {
+	
+  double a, k, p, sigma, x, z;
+  
+  // Scale frequency to unit range
+  x = ((double)_frequency - nearFrequency) / (farFrequency - nearFrequency);
+  
+  // Rescale to z-score
   sigma = sqrt(sigma2);
-  z = (_x - mu) / sigma;
+  z = (x - mu) / sigma;
   if (_detect)
     z *= -1;
+
+  // Calculate probability of measurement and
+  // information gained based on current dist
   p = erfc(z);
   k = -log(p);
+  
+  // Boundary z-score
   a = (_detect - mu) / sigma;
-  dmu = exp(-z * z / 2) - exp(-a * a / 2);
+  
+  // Expected discrete observation
+  x = exp(-z * z / 2) - exp(-a * a / 2);
   if (_detect)
-	  dmu = -dmu;
-  dmu *= sigma * 0.398942280401433;
-  dmu += mu;
-  sigma2 = (inertia * sigma2 + k * z * z * sigma2) / (inertia + k);
-  mu = (inertia * mu + k * dmu) / (inertia + k);
+	  x = -x;
+  x *= sigma * 0.398942280401433;
+  
+  // Update variance
+  sigma2 = (inertia * sigma2 + k * x * x) / (inertia + k);
+  
+  // Un-center
+  x += mu;
+  // Update mean
+//  sigma2 = (inertia * sigma2 + k * z * z * sigma2) / (inertia + k);
+  mu = (inertia * mu + k * x) / (inertia + k);
 }
 
 double erfc(double z) {
