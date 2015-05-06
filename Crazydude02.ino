@@ -1,6 +1,7 @@
 #include <Servo.h>
 
 // Constants
+const int speakerPin = 2;
 const int leftEye = 2;
 const int rightEye = 10;
 const int frontEye = 3;
@@ -37,6 +38,10 @@ double roam_change = 1;
  * Called once before all the looping starts
  **/
 void setup() {
+  // Startup tone
+  tone(speakerPin, 4000, 100);
+  delay(100);
+
   setupHardwareConnections();
 }
 
@@ -130,8 +135,8 @@ void performRoamingBehavior() {
 
   // make sure keep approximately constant speed
   double diff = roam_currentSpeed - roam_forwardSpeed;
-  ServoL.writeMicroseconds(convertSpeedL(roam_forwardSpeed + diff));
-  ServoR.writeMicroseconds(convertSpeedR(roam_forwardSpeed - diff));
+  servoLeft.writeMicroseconds(convertSpeedL(roam_forwardSpeed + diff));
+  servoRight.writeMicroseconds(convertSpeedR(roam_forwardSpeed - diff));
 }
 
 
@@ -145,6 +150,6 @@ int convertSpeedL(int s) {
 }
 
 void stopRobot() {
-  ServoL.writeMicroseconds(convertSpeedL(0));
-  ServoR.writeMicroseconds(convertSpeedR(0));
+  servoLeft.writeMicroseconds(convertSpeedL(0));
+  servoRight.writeMicroseconds(convertSpeedR(0));
 }
