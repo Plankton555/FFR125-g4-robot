@@ -7,10 +7,14 @@ class IRLogic {
     double mu;
     double sigma2;
   public:
+	IRLogic();
     IRLogic(double _inertia);
     ~IRLogic();
     double getState();
-    void mark(double _x, bool _detect);
+	unsigned int getFrequency();
+    void mark(unsigned int _frequency, bool _detect);
+	static const unsigned int farFrequency = 37000;
+	static const unsigned int nearFrequency = 42000;
 };
 
 double erfc(double z);
