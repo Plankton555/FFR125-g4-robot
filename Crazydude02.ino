@@ -1,13 +1,16 @@
+#include <IRLogic.h>
 #include <Servo.h>
 
 // Constants
 const int speakerPin = 2;
-const int leftEye = 2;
-const int rightEye = 10;
-const int frontEye = 3;
+const int leftEye = 10;
+const int rightEye = 8;
+const int frontEye = 9;
 const int backEye = 9;
-const int leftIRLED = 8;
-const int rightIRLED = 4;
+const int leftIRLED = 6;
+const int rightIRLED = 5;
+const int motorLPin = 11;
+const int motorRPin = 12;
 
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
@@ -30,8 +33,8 @@ bool carryingCylinder = false;
 
 double roam_forwardSpeed = 50;
 double roam_currentSpeed = roam_forwardSpeed;
-double roam_variance = 10;
-double roam_change = 1;
+double roam_variance = 20;
+double roam_change = 5;
 
 
 /**
@@ -43,6 +46,7 @@ void setup() {
   delay(100);
 
   setupHardwareConnections();
+  setupSensors();
 }
 
 /**
@@ -78,7 +82,17 @@ void setupHardwareConnections() {
   pinMode(backEye, INPUT);
   pinMode(leftIRLED, OUTPUT);
   pinMode(rightIRLED, OUTPUT);
+
+  // Servo initialization
+  servoLeft.attach(motorLPin);
+  servoRight.attach(motorRPin);
+
+
   Serial.begin(9600);
+}
+
+void setupSensors() {
+
 }
 
 void debugPrint() {
@@ -124,7 +138,8 @@ void moveRobot() {
 }
 
 void performRoamingBehavior() {
-  double rndChange = (rand()-0.5)*2*roam_change; // change seed here
+  double rndNr = ((double)random(0, 100))/100;
+  double rndChange = (rndNr-0.5)*2*roam_change; // change seed here
   roam_currentSpeed += rndChange;
   // clamp the speed
   if (roam_currentSpeed < roam_forwardSpeed - roam_variance) {
