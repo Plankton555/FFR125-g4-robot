@@ -92,9 +92,16 @@ void setupHardwareConnections() {
 }
 
 void setupSensors() {
+  // Sensor inertia can be changed from default value 10.0 here
+  // sensorState[0][0].setInertia(12.0); 
 }
 
 void debugPrint() {
+  // Debug sensor readings
+  // Serial.print(sensorState[0][0].getState());
+  
+  // Debug beacon detection
+  // Serial.print(sensorDetect[0]);
 }
 
 void readSensors() {
