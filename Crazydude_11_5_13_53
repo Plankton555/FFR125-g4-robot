@@ -94,7 +94,7 @@ void setupHardwareConnections() {
 void setupSensors() {
   // Sensor inertia can be changed from default value 10.0 here
   for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-    for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++ {
+    for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++) {
       sensorState[sensorIndex][LEDIndex].setInertia(20.0);
       sensorState[sensorIndex][LEDIndex].setSigma(0.15);
     }
