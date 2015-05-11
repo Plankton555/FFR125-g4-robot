@@ -119,7 +119,7 @@ void readSensors() {
   for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
     for (byte LEDIndex = 0; LEDIndex < LEDCount ; LEDIndex++) {
       currentFrequency = sensorState[sensorIndex][LEDIndex].getFrequency();
-      currentFrequency = constrain(currentFrequency, 38000, 42000);
+      currentFrequency = constrain(currentFrequency, 38000, 43000);
       tone(LEDPin[LEDIndex], currentFrequency);
       
       // Wait long enough to respond
