@@ -41,7 +41,7 @@ void IRLogic::mark(uint16_t _frequency, bool _detect) {
   k = log_erfc(z);
   
   // Update mean
-  mu = (inertia * mu + k * _detect) / (inertia + k);
+  mu = (inertia * mu + k * !_detect) / (inertia + k);
 }
 
 // 5th-order polynomial approximation of log(cdf(z))
