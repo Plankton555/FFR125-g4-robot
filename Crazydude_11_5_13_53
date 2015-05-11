@@ -3,10 +3,10 @@
 
 // Constants
 
-const byte sensorCount = 3;
+const byte sensorCount = 4;
 const byte LEDCount = 2;
 
-const byte sensorPin[sensorCount] = {10, 9, 8}; // left, front, right
+const byte sensorPin[sensorCount] = {10, 9, 8, 9}; // left, front, right, front
 const byte LEDPin[LEDCount] = {6, 5};           // left, right
 
 const byte speakerPin = 2;
@@ -93,8 +93,14 @@ void setupHardwareConnections() {
 
 void setupSensors() {
   // Sensor inertia can be changed from default value 10.0 here
-   sensorState[0][0].setInertia(20.0); 
-   sensorState[0][0].setSigma(1.2);
+  for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
+    for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++ {
+      sensorState[sensorIndex][LEDIndex].setInertia(20.0);
+      sensorState[sensorIndex][LEDIndex].setSigma(0.15);
+    }
+  }    
+   sensorState[3][0].setInertia(1.0);
+   sensorState[3][1].setInertia(1.0);
 }
 
 void debugPrint() {
