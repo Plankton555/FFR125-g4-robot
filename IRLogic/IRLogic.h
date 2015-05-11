@@ -14,8 +14,8 @@ class IRLogic {
     double getState();
     unsigned int getFrequency();
     void mark(unsigned int _frequency, bool _detect);
-    static const unsigned int farFrequency = 37000;
-    static const unsigned int nearFrequency = 42000;
+    static const unsigned int farFrequency = 37900;
+    static const unsigned int nearFrequency = 43000;
 };
 
 double log_erfc(double z);
