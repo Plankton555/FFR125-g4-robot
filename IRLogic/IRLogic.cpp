@@ -25,17 +25,21 @@ void IRLogic::mark(long _frequency, bool _detect) {
 	long mu = getState();
 	if (_detect && x < far) {
 		if (x < mu) {
-			near = max(near - mu + x, 0);
+			near = max(near - mu + x, 2) - 2;
 			far = mu;
 		} else far = x;
 		bias = max(1, bias + 1);
 	}
 	else if (!_detect && x > near) {
 		if (x > mu) {
-			far = min(far - mu + x, 1024);
+			far = min(far - mu + x, 1022) + 2;
 			near = mu;
 		} else near = x;
 		bias = min(-1, bias - 1);
+	}
+	if (near + 8 > far) {
+		near = constrain(near - 4, 0, 1008);
+		far = near + 16;
 	}
 }
 
