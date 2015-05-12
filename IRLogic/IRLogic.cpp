@@ -9,11 +9,11 @@ IRLogic::IRLogic() {
 
 IRLogic::~IRLogic() {}
 
-double IRLogic::getState() {
+long IRLogic::getState() {
   return (far + near) / 2;
 }
 
-unsigned int IRLogic::getFrequency() {
+long IRLogic::getFrequency() {
 	long a = max(bias, 1);
 	long b = max(-bias, 1);
 	long x = (near * a + far * b) / (a + b);
