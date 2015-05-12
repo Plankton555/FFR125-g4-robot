@@ -3,21 +3,17 @@
 
 class IRLogic {
   private:
-    double inertia;
-    double mu;
-    double sigma;
+    long near;
+    long far;
+    byte bias;
   public:
     IRLogic();
     ~IRLogic();
-    void setInertia(double _inertia);
-    void setSigma(double _sigma);
-    double getState();
+    long getState();
     unsigned int getFrequency();
     void mark(unsigned int _frequency, bool _detect);
     static const unsigned int farFrequency = 37900;
     static const unsigned int nearFrequency = 43000;
 };
-
-double log_erfc(double z);
 
 #endif
