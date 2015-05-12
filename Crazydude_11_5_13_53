@@ -3,10 +3,10 @@
 
 // Constants
 
-const byte sensorCount = 4;
+const byte sensorCount = 3;
 const byte LEDCount = 2;
 
-const byte sensorPin[sensorCount] = {10, 9, 8, 9}; // left, front, right, front
+const byte sensorPin[sensorCount] = {10, 9, 8}; // left, front, right
 const byte LEDPin[LEDCount] = {6, 5};           // left, right
 
 const byte speakerPin = 2;
@@ -15,7 +15,7 @@ const byte motorRPin = 12;
 
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
-const unsigned long sensorDelay = 400;     // microseconds ON time, full cycle is 3x
+const unsigned long sensorDelay = 300;     // microseconds ON time, full cycle is 3x
 
 
 // Variables
@@ -92,21 +92,11 @@ void setupHardwareConnections() {
 }
 
 void setupSensors() {
-  // Sensor inertia can be changed from default value 10.0 here
-  for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-    for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++) {
-      sensorState[sensorIndex][LEDIndex].setInertia(20.0);
-      sensorState[sensorIndex][LEDIndex].setSigma(0.15);
-    }
-  }    
-   sensorState[3][0].setInertia(1.0);
-   sensorState[3][1].setInertia(1.0);
 }
 
 void debugPrint() {
   // Debug sensor readings
-   Serial.print(sensorState[0][0].getState());
-   Serial.println(" ");
+  // Serial.print(sensorState[0][0].getState());
   
   // Debug beacon detection
   // Serial.print(sensorDetect[0]);
@@ -114,12 +104,12 @@ void debugPrint() {
 
 void readSensors() {
 
-  unsigned int currentFrequency;
+  long currentFrequency;
 
   for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
     for (byte LEDIndex = 0; LEDIndex < LEDCount ; LEDIndex++) {
       currentFrequency = sensorState[sensorIndex][LEDIndex].getFrequency();
-      currentFrequency = constrain(currentFrequency, 38000, 43000);
+      currentFrequency = constrain(currentFrequency, 38000, 42000);
       tone(LEDPin[LEDIndex], currentFrequency);
       
       // Wait long enough to respond
@@ -131,7 +121,6 @@ void readSensors() {
       
       // Wait for duty cycle reasons
       delayMicroseconds(sensorDelay * 2);
-      sensorState[sensorIndex][LEDIndex].mark(37900, true);
       for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
         sensorState[writeIndex][LEDIndex].mark(currentFrequency, sensorDetect[writeIndex]);
     }
