@@ -5,7 +5,7 @@ class IRLogic {
   private:
     long near;
     long far;
-    byte bias;
+    int bias;
   public:
     IRLogic();
     ~IRLogic();
