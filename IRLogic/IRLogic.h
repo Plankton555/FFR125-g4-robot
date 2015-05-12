@@ -10,11 +10,11 @@ class IRLogic {
     IRLogic();
     ~IRLogic();
     long getState();
-    unsigned int getFrequency();
+    long getFrequency();
     void mark(long _frequency, bool _detect);
     void reset();
-    static const unsigned int farFrequency = 37900;
-    static const unsigned int nearFrequency = 43000;
+    static const long farFrequency = 37900;
+    static const long nearFrequency = 43000;
 };
 
 #endif
