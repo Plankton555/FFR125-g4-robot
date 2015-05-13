@@ -13,6 +13,15 @@ const byte speakerPin = 2;
 const byte motorLPin = 11;
 const byte motorRPin = 12;
 
+// states for FSM
+const int S_SEARCH_ARENA = 1;
+const int S_EXIT_SAFEZONE = 2;
+const int S_AVOID_WALL = 3;
+const int S_GRAB_CYLINDER = 4;
+const int S_INVESTIGATE_OBJECT = 5;
+const int S_SEARCH_SAFEZONE_HEADING = 6;
+const int S_MOVE_TO_SAFEZONE = 7;
+
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
 const unsigned long sensorDelay = 300;     // microseconds ON time, full cycle is 3x
@@ -135,33 +144,86 @@ void readSensors() {
 }
 
 void moveRobot() {
-  if (carryingCylinder) {
-    // Find safe zone and return cylinder to it
+  // if needed, we can check if the robot still holds the cylinder or not
 
+  // execute FSM
+  if (currentState == S_SEARCH_ARENA) {
+    // check if we need to go to another state
+    if (insideSafeZone) {
+    currentState = S_EXIT_SAFEZONE;
+    } else if (sensorsDetectedObject) {
+      if (sensorsDetectWall) {
+        currentState = S_AVOID_WALL;
+      } else if (sensorsDetectCylinder) {
+        currentState = S_GRAB_CYLINDER;
+      } else { // not sure which object
+        currentState = S_INVESTIGATE_OBJECT; //???
+      }
+    }
+
+    performArenaSearch();
+
+  } else if (currentState == S_EXIT_SAFEZONE) {
+    performSafezoneExit();
+  } else if (currentState == S_AVOID_WALL) {
+    performWallAvoidance();
+  } else if (currentState == S_GRAB_CYLINDER) {
+    performCylinderGrabbing();
+    // behaviour
+    currentState = S_SEARCH_SAFEZONE_HEADING;
+  } else if (currentState == S_INVESTIGATE_OBJECT) {
+    // behaviour
+    // ???
+  } else if (currentState == S_SEARCH_SAFEZONE_HEADING) {
+    // behaviour
+    currentState = S_MOVE_TO_SAFEZONE;
+  } else if (currentState == S_MOVE_TO_SAFEZONE) {
+
+    // if inside safezone, currentState = S_EXIT_SAFEZONE
+
+    // after a certain time, currentState = S_SEARCH_SAFEZONE_HEADING
   } else {
-    // Roam arena and find a cylinder
-    performRoamingBehavior();
+    // This should never happen
   }
 }
 
-void performRoamingBehavior() {
-  double rndNr = ((double)random(0, 100)) / 100;
-  double rndChange = (rndNr - 0.5) * 2 * roam_change; // change seed here
-  roam_currentSpeed += rndChange;
-  // clamp the speed
-  if (roam_currentSpeed < roam_forwardSpeed - roam_variance) {
-    roam_currentSpeed = roam_forwardSpeed - roam_variance;
-  } else if (roam_currentSpeed > roam_forwardSpeed + roam_variance) {
-    roam_currentSpeed = roam_forwardSpeed + roam_variance;
-  }
+void performArenaSearch() {
+  moveRobot(80);
+}
 
-  // make sure keep approximately constant speed
-  double diff = roam_currentSpeed - roam_forwardSpeed;
-  servoLeft.writeMicroseconds(convertSpeedL(roam_forwardSpeed + diff));
-  servoRight.writeMicroseconds(convertSpeedR(roam_forwardSpeed - diff));
+void performSafezoneExit() {
+  moveRobot(-80);
+  delayMicroseconds(2000);
+  turnRobot(-50, 50);
+  currentState = S_SEARCH_ARENA;
+}
+
+void performWallAvoidance() {
+  moveRobot(-80);
+  delayMicroseconds(1000);
+  turnRobot(-50, 50);
+  currentState = S_SEARCH_ARENA;
+}
+
+void performCylinderGrabbing() {
+  moveRobot(-80);
+  delayMicroseconds(1000);
+  turnRobot(-50, 50);
+  currentState = S_SEARCH_SAFEZONE_HEADING;
 }
 
 
+// *********************************************************''
+
+void moveRobot(int speed) {
+  servoLeft.writeMicroseconds(convertSpeedL(speed));
+  servoRight.writeMicroseconds(convertSpeedR(speed));
+}
+
+void turnRobot(int leftWheelSpeed, int rightWheelSpeed) {
+  servoLeft.writeMicroseconds(convertSpeedL(leftWheelSpeed));
+  servoRight.writeMicroseconds(convertSpeedR(rightWheelSpeed));
+}
 
 int convertSpeedR(int s) {
   return 1500 - s * 2;
@@ -169,9 +231,4 @@ int convertSpeedR(int s) {
 
 int convertSpeedL(int s) {
   return 1500 + s * 2;
-}
-
-void stopRobot() {
-  servoLeft.writeMicroseconds(convertSpeedL(0));
-  servoRight.writeMicroseconds(convertSpeedR(0));
 }
