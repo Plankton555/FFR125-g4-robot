@@ -13,8 +13,8 @@ class IRLogic {
     long getFrequency();
     void mark(long _frequency, bool _detect);
     void reset();
-    static const long farFrequency = 37900;
-    static const long nearFrequency = 43000;
+    static const long farFrequency = 38000;
+    static const long nearFrequency = 42000;
 };
 
 #endif
