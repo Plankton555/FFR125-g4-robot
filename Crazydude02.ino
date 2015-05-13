@@ -36,10 +36,8 @@ boolean sensorDetect[sensorCount];
 
 boolean carryingCylinder = false;
 
-double roam_forwardSpeed = 50;
-double roam_currentSpeed = roam_forwardSpeed;
-double roam_variance = 20;
-double roam_change = 5;
+long beaconSearchTime;
+
 
 unsigned long timeSincePrint;
 
@@ -169,12 +167,11 @@ void moveRobot() {
     performWallAvoidance();
   } else if (currentState == S_GRAB_CYLINDER) {
     performCylinderGrabbing();
-    // behaviour
-    currentState = S_SEARCH_SAFEZONE_HEADING;
   } else if (currentState == S_INVESTIGATE_OBJECT) {
     // behaviour
     // ???
   } else if (currentState == S_SEARCH_SAFEZONE_HEADING) {
+    performBeaconSearch();
     // behaviour
     currentState = S_MOVE_TO_SAFEZONE;
   } else if (currentState == S_MOVE_TO_SAFEZONE) {
@@ -206,10 +203,19 @@ void performWallAvoidance() {
 }
 
 void performCylinderGrabbing() {
+  // how do we do this one???
+  /*
   moveRobot(-80);
   delayMicroseconds(1000);
   turnRobot(-50, 50);
   currentState = S_SEARCH_SAFEZONE_HEADING;
+  */
+}
+
+void performBeaconSearch() {
+  beaconSearchIntensity = 0; // should be global
+  beaconSearchTime = 0; // should be global
+  turnRobot(-20, 20);
 }
 
 
