@@ -1,0 +1,85 @@
+# -*- coding: utf-8 -*-
+
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+
+NEAR = 43000
+FAR = 38000
+
+
+def freqToX(freq):
+    return (freq - NEAR) * 1024 // (FAR - NEAR)
+
+
+def xToFreq(x):
+    return NEAR + x * (FAR - NEAR) // 1024
+
+
+class IRLogic:
+
+    def __init__(self):
+        self.near = 0
+        self.far = 1024
+        self.bias = 1
+
+    def getState(self):
+        return (self.far + self.near) // 2
+
+    def getFrequency(self):
+        
+        a = max(self.bias, 1)
+        b = max(-self.bias, 1)
+        x = (b * self.far + a * self.near) // (a + b)
+        # x = (self.far + self.near + self.last) / 3
+        return xToFreq(x)
+
+    def mark(self, x, detect):
+        if (detect and x < self.far):
+            self.bias = max(self.bias, 0)
+            dx = self.far - x
+            far = max(self.far - dx, self.getState())
+            self.near = max(self.near - dx - far + self.far, 2) - 2
+            # self.near = min(self.near, x)
+            # self.near = max(self.near + (x - self.far) * self.bias, 0)
+            self.far = self.last = far
+            self.bias += 1
+        elif (~detect and x > self.near):
+            self.bias = min(self.bias, 0)
+            dx = x - self.near
+            near = max(self.near + dx, self.getState())
+            self.far = min(self.far + dx - self.near + near, 1022) + 2
+            # self.far = max(self.far, x)
+            # self.far = min(self.far + (self.near - x) * self.bias, 1)
+            self.near = self.last = near
+            self.bias -= 1
+        if self.near + 8> self.far:
+            self.near = min(max(self.near - 4, 0), 1008)
+            self.far = self.near + 16
+
+if (__name__ is '__main__'):
+    maxIter = 50000
+    t = 0
+    dt = 0.004
+    sensorCount = 2
+    state = [IRLogic() for _ in range(sensorCount)]
+    x = np.zeros(maxIter)
+    y = np.zeros([maxIter, sensorCount])
+    s = np.zeros([maxIter, sensorCount])
+    near = np.zeros([maxIter, sensorCount])
+    far = np.zeros([maxIter, sensorCount])
+    for i in range(maxIter):
+        y[i, :] = 512  + 500 *\
+                      np.sin(t * np.linspace(0.1, 1.2, sensorCount))
+        t += dt
+        f = state[i % sensorCount].getFrequency()
+        x[i] = freqToX(f)
+        detect = y[i, :] < x[i]
+        noise = np.random.rand(sensorCount) < 0.25
+        detect[noise] = True
+        for n in range(sensorCount):
+            state[n].mark(x[i], detect[n])
+            s[i, n] = state[n].getState()
+            near[i, n] = state[n].near
+            far[i, n] = state[n].far
