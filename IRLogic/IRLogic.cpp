@@ -2,49 +2,48 @@
 #include "IRLogic.h"
 
 IRLogic::IRLogic() {
-	far = 1024;
-	near = 0;
-	bias = 1;
+	frequency = (farFrequency + nearFrequency) / 2;
+	decay = 19.0 / 20.0;
+	delta = 512;
 }
 
 IRLogic::~IRLogic() {}
 
-long IRLogic::getState() {
-  return (far + near) / 2;
-}
-
-long IRLogic::getFrequency() {
-	long a = max(bias, 1);
-	long b = max(-bias, 1);
-	long x = (near * a + far * b) / (a + b);
-	return x * (farFrequency - nearFrequency) / 1024 + nearFrequency;
-}
-
-void IRLogic::mark(long _frequency, bool _detect) {
-	long x = (_frequency - nearFrequency) * 1024 / (farFrequency - nearFrequency);
-	long mu = getState();
-	if (_detect && x < far) {
-		if (x < mu) {
-			near = max(near - mu + x, 2) - 2;
-			far = mu;
-		} else far = x;
-		bias = max(1, bias + 1);
+void IRLogic::mark(unsigned int _frequency, bool _detect) {
+	
+	float x;
+	
+	if (_detect) {
+	  if (_frequency >= frequency) {
+		  frequency += delta;
+		  if (lastDetect) {
+		  	delta <<= 1;
+		  	delta &= 510;
+	  	}
+	  	else
+	  		delta >>= 1;
+		  delta |= 1;
+		  lastDetect = _detect;
+	  }
+	  else
+	  	frequency++;
+	 }
+	 else {
+	  if (_frequency <= frequency) {
+	    frequency -= delta;
+	    if (!lastDetect) {
+		    delta <<= 1;
+		    delta &= 510;
+	    }
+	    else
+  	  	delta >>= 1;
+		  delta |= 1;
+  	  lastDetect = _detect;
+	  }
+	  else
+		  frequency--;
 	}
-	else if (!_detect && x > near) {
-		if (x > mu) {
-			far = min(far - mu + x, 1022) + 2;
-			near = mu;
-		} else near = x;
-		bias = min(-1, bias - 1);
-	}
-	if (near + 8 > far) {
-		near = constrain(near - 4, 0, 1008);
-		far = near + 16;
-	}
-}
-
-void IRLogic::reset() {
-	far = 1024;
-	near = 0;
-	bias = 1;
+	frequency = constrain(frequency, farFrequency, nearFrequency);
+	x = float(nearFrequency - frequency) / 25000;
+	state = state * decay + x * (1 - decay);
 }
