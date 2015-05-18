@@ -2,19 +2,17 @@
 #define IRLOGIC_H
 
 class IRLogic {
-  private:
-    long near;
-    long far;
-    int bias;
   public:
     IRLogic();
     ~IRLogic();
-    long getState();
-    long getFrequency();
-    void mark(long _frequency, bool _detect);
-    void reset();
-    static const long farFrequency = 38000;
-    static const long nearFrequency = 42000;
+    void mark(unsigned int _frequency, bool _detect);
+		unsigned int frequency;
+		unsigned int delta;
+		float decay;
+		float state;
+		bool lastDetect;
+    static const unsigned int farFrequency = 38000;
+    static const unsigned int nearFrequency = 63000;
 };
 
 #endif
