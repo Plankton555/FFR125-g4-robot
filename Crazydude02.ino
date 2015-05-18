@@ -235,9 +235,27 @@ void testBehavior() {
 // ****************************
 
 void testMoveForward() {
-  moveRobot(50);
-  delayMicroseconds(1000);
+  int tRightTurn = 1100/4; // 16-th circle
+  int tLeftTurn = 1190/4; // 16-th circle
+
+  //turnRobot(100, 100); delay(2000);
+  //turnRobot(100, 100); delay(1000);
+  //turnRobot(-100, -100); delay(2000);
+
+  //turnRobot(100, 0); delay(tRightTurn); // 16th
+  //turnRobot(0, 100); delay(tLeftTurn); // 16th
+  //turnRobot(100, 0); delay(2*tRightTurn); // 8th
+  //turnRobot(0, 100); delay(2*tLeftTurn); // 8th
+
+  // pushing turn
+  turnRobot(100, 15); delay(2*tRightTurn); // 16th
+  //turnRobot(15, 100); delay(2*tLeftTurn); // 16th
+
+
+
+
   moveRobot(0);
+  delay(2000);
 }
 
 void testTurnLeft() {
@@ -245,7 +263,7 @@ void testTurnLeft() {
 }
 
 
-// *********************************************************''
+// *********************************************************
 
 void moveRobot(int speed) {
   servoLeft.writeMicroseconds(convertSpeedL(speed));
