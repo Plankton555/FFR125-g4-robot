@@ -1,67 +1,111 @@
-//#include <IRLogic.h>
+#include <IRLogic.h>
 #include <Servo.h>
 
-// Constants
+/**
+ * Pin assignments
+ **/
 
 const byte sensorCount = 3;
 const byte LEDCount = 2;
 
-const byte sensorPin[sensorCount] = {10, 9, 8}; // left, front, right
-const byte LEDPin[LEDCount] = {6, 5};           // left, right
+const byte sensorPin[sensorCount] = {8, 3, 9}; // left, front, right
+const byte LEDPin[LEDCount] = {5, 4};           // left, right
+const byte rearSensorPin = 10;
+const byte floorSensorPin = A3;
 
 const byte speakerPin = 2;
 const byte motorLPin = 11;
 const byte motorRPin = 12;
-
-const int floorSensorPin = A3;
+const byte redLEDPin = 13;
 
 // states for FSM
-const int S_SEARCH_ARENA = 1;
-const int S_EXIT_SAFEZONE = 2;
-const int S_AVOID_WALL = 3;
-const int S_GRAB_CYLINDER = 4;
-const int S_INVESTIGATE_OBJECT = 5;
-const int S_SEARCH_SAFEZONE_HEADING = 6;
-const int S_MOVE_TO_SAFEZONE = 7;
-int currentState = 1;
+// const byte S_SEARCH_ARENA = 1;
+// const byte S_EXIT_SAFEZONE = 2;
+// const byte S_AVOID_WALL = 3;
+// const byte S_GRAB_CYLINDER = 4;
+// const byte S_INVESTIGATE_OBJECT = 5;
+// const byte S_SEARCH_SAFEZONE_HEADING = 6;
+// const byte S_MOVE_TO_SAFEZONE = 7;
+// byte currentState = 1;
 
-// Floor photodetector
+
+/**
+ * Motor state machine
+ **/
+
+const byte M_STOP = 0;
+const byte M_FORWARD = 1;
+const byte M_REVERSE = 2;
+const byte M_LEFT_TURN = 3;
+const byte M_RIGHT_TURN = 4;
+const byte M_LEFT_PUSH = 5;
+const byte M_RIGHT_PUSH = 6;
+byte currentMotorState = M_STOP;
+unsigned long actionStartTime;
+unsigned long actionDuration;
+
+/**
+ * Floor photodetector
+ **/
+
 float floorAvg;
 const float decayRate = 1 - 1 / 20.0;
-const float detectThreshold = 0.6;
-bool floorDetect;
+const float detectEnterThreshold = 0.6;
+const float detectExitThreshold = 1.5;
+bool enterDetect;
+bool exitDetect;
 
-// Parameters
-const unsigned long UPDATE_INTERVAL = 100; // milliseconds
-const unsigned long sensorDelay = 300;     // microseconds ON time, full cycle is 3x
+/**
+ * IR detector
+ **/
 
+const unsigned long beaconDuration =  2000; // microsec
+const unsigned long sensorPulse =      400; // microsec ON time
+const unsigned long sensorDuration = 15000; // microsec OFF time
 
-// Variables
+byte activeSensor = 0;
+byte activeLED = 0;
+
+unsigned long lastBeaconTime = 0;
+unsigned long lastSensorTime = 0;
+
+IRLogic sensorState[sensorCount][LEDCount];
+boolean sensorDetect[sensorCount];
+boolean beaconDetect[sensorCount + 1];
+
+int dataOut = 0;
+
+/**
+ * FSM
+ **/
+
+const int leftTurnDuration =   297; // ms ~16th rotation
+const int rightTurnDuration =  275; // ms ~16th rotation
+const int driveDuration =     2000; // ms ~16 cm forward
+const int restDuration =      3000; // ms
+
+/**
+ * Servos
+ **/
+
 Servo servoLeft;
 Servo servoRight;
-
-//IRLogic sensorState[sensorCount][LEDCount];
-boolean sensorDetect[sensorCount];
-
-boolean carryingCylinder = false;
-
-long beaconSearchTime;
-
-
-unsigned long timeSincePrint;
-
 
 /**
  * Called once before all the looping starts
  **/
 void setup() {
-  // Startup tone
-  tone(speakerPin, 4000, 100);
-  delay(100);
 
   setupHardwareConnections();
-  setupSensors();
-  timeSincePrint = millis();
+
+  // Startup indicators
+  digitalWrite(redLEDPin, HIGH);
+  beep(3);
+  delay(1000);
+  digitalWrite(redLEDPin, LOW);
+
+  // Initial state
+  setMotorState(M_STOP, 2000);
 }
 
 /**
@@ -69,22 +113,39 @@ void setup() {
  **/
 void loop() {
 
-  //readSensors();
-  //moveRobot();
-  updateFloorSensor();
-  testBehavior();
+  // Update IR and floor sensors if ready
+  if (micros() - lastSensorTime > sensorDuration) {
+    updateEyes();
+    if (dataOut > 0) {
+      debugPrint();
+      dataOut--;
+    }
 
-
-  // do delay unless execution has taken too much time
-  unsigned long timeSpent = millis() - timeSincePrint;
-  if (timeSpent < UPDATE_INTERVAL) {
-    delay(UPDATE_INTERVAL - timeSpent);
-  } else {
-    // overdue, return from function
-
-    debugPrint();
-    timeSincePrint = millis();
+    // Only update floor sensor when moving
+    if (currentMotorState != M_STOP)
+      updateFloorSensor();
   }
+
+  // Update beacon sensor if ready
+  if (micros() - lastBeaconTime > beaconDuration)
+    updateBeacon();
+
+  // Update FSM if ready
+  if (millis() - actionStartTime > actionDuration) {
+    // Make next decision
+    digitalWrite(redLEDPin, !digitalRead(redLEDPin));
+    setMotorState(M_STOP, 2000);
+  }
+}
+
+/**
+ * Serial communication for data collection
+ **/
+
+void serialEvent() {
+  if (Serial.available() && Serial.read() == 120)
+    if (dataOut == 0)
+      dataOut = 100;
 }
 
 
@@ -93,200 +154,129 @@ void loop() {
 /**
  * Sets up hardware connections, such as pins and sensors
  **/
+
 void setupHardwareConnections() {
 
+  // Inputs
   for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++)
     pinMode(sensorPin[sensorIndex], INPUT);
 
+  pinMode(rearSensorPin, INPUT);
+
+  // Outputs
   for (byte LEDIndex = 0; LEDIndex < LEDCount; LEDIndex++)
     pinMode(LEDPin[LEDIndex], OUTPUT);
+
+  pinMode(redLEDPin, OUTPUT);
+  pinMode(speakerPin, OUTPUT);
 
   // Servo initialization
   servoLeft.attach(motorLPin);
   servoRight.attach(motorRPin);
 
+  // Serial connection
+  Serial.begin(115200);
 
-  Serial.begin(9600);
 }
 
-void setupSensors() {
-  // Sensor inertia can be changed from default value 10.0 here
-  // sensorState[0][0].setInertia(12.0);
+void errorSignal() {
+  Serial.println();
+  Serial.println("OHSHIT!");
+  Serial.println();
 }
 
 void debugPrint() {
-  // Debug sensor readings
-  // Serial.print(sensorState[0][0].getState());
-
-  // Debug beacon detection
-  // Serial.print(sensorDetect[0]);
+  Serial.print(sensorState[0][0].state * 10);
+  Serial.print(',');
+  Serial.print(sensorState[1][0].state * 10);
+  Serial.print(',');
+  Serial.print(sensorState[2][0].state * 10);
+  Serial.print(',');
+  Serial.print(sensorState[0][1].state * 10);
+  Serial.print(',');
+  Serial.print(sensorState[1][1].state * 10);
+  Serial.print(',');
+  Serial.println(sensorState[2][1].state * 10);
 }
 
-/*
-void readSensors() {
+void setMotorState(byte newMotorState, unsigned long duration) {
 
-  unsigned int currentFrequency;
+  actionStartTime = millis();
+  actionDuration = duration;
+  currentMotorState = newMotorState;
 
-  for (byte sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-    for (byte LEDIndex = 0; LEDIndex < LEDCount ; LEDIndex++) {
-      currentFrequency = sensorState[sensorIndex][LEDIndex].getFrequency();
-      currentFrequency = constrain(currentFrequency, 38000, 42000);
-      tone(LEDPin[LEDIndex], currentFrequency);
-
-      // Wait long enough to respond
-      delayMicroseconds(sensorDelay);
-
-      for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
-        sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
-      noTone(LEDPin[LEDIndex]);
-
-      // Wait for duty cycle reasons
-      delayMicroseconds(sensorDelay * 2);
-      for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
-        sensorState[writeIndex][LEDIndex].mark(currentFrequency, sensorDetect[writeIndex]);
-    }
+  if (newMotorState == M_STOP) {
+    moveRobot(0);
   }
-
-  // Beacon detection
-  for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
-    sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
-
-}
-*/
-
-/*
-void moveRobot() {
-  // if needed, we can check if the robot still holds the cylinder or not
-
-  // execute FSM
-  if (currentState == S_SEARCH_ARENA) {
-    // check if we need to go to another state
-    if (insideSafeZone) {
-    currentState = S_EXIT_SAFEZONE;
-    } else if (sensorsDetectedObject) {
-      if (sensorsDetectWall) {
-        currentState = S_AVOID_WALL;
-      } else if (sensorsDetectCylinder) {
-        currentState = S_GRAB_CYLINDER;
-      } else { // not sure which object
-        currentState = S_INVESTIGATE_OBJECT; //???
-      }
-    }
-
-    performArenaSearch();
-
-  } else if (currentState == S_EXIT_SAFEZONE) {
-    performSafezoneExit();
-  } else if (currentState == S_AVOID_WALL) {
-    performWallAvoidance();
-  } else if (currentState == S_GRAB_CYLINDER) {
-    performCylinderGrabbing();
-  } else if (currentState == S_INVESTIGATE_OBJECT) {
-    // behaviour
-    // ???
-  } else if (currentState == S_SEARCH_SAFEZONE_HEADING) {
-    performBeaconSearch();
-    // behaviour
-    currentState = S_MOVE_TO_SAFEZONE;
-  } else if (currentState == S_MOVE_TO_SAFEZONE) {
-
-    // if inside safezone, currentState = S_EXIT_SAFEZONE
-
-    // after a certain time, currentState = S_SEARCH_SAFEZONE_HEADING
-  } else {
-    // This should never happen
+  else if (newMotorState == M_FORWARD) {
+    moveRobot(100);
   }
-}
-*/
-
-void performArenaSearch() {
-  moveRobot(80);
-}
-
-void performSafezoneExit() {
-  moveRobot(-80);
-  delayMicroseconds(2000);
-  turnRobot(-50, 50);
-  currentState = S_SEARCH_ARENA;
-}
-
-void performWallAvoidance() {
-  moveRobot(-80);
-  delayMicroseconds(1000);
-  turnRobot(-50, 50);
-  currentState = S_SEARCH_ARENA;
+  else if (newMotorState == M_REVERSE) {
+    moveRobot(-100);
+  }
+  else if (newMotorState == M_LEFT_TURN) {
+    turnRobot(0, 100);
+  }
+  else if (newMotorState == M_RIGHT_TURN) {
+    turnRobot(100, 0);
+  }
+  else if (newMotorState == M_LEFT_PUSH) {
+    turnRobot(15, 100);
+  }
+  else if (newMotorState == M_RIGHT_PUSH) {
+    turnRobot(100, 15);
+  }
+  else errorSignal();
 }
 
-void performCylinderGrabbing() {
-  // how do we do this one???
-  /*
-  moveRobot(-80);
-  delayMicroseconds(1000);
-  turnRobot(-50, 50);
-  currentState = S_SEARCH_SAFEZONE_HEADING;
-  */
+void updateBeacon() {
+  // Beacon detection MUST be cleared after use for decision-making!
+  for (byte i = 0; i < sensorCount; i++)
+    beaconDetect[i] |= !digitalRead(sensorPin[i]);
+  beaconDetect[sensorCount] = !digitalRead(rearSensorPin);
 }
 
-void performBeaconSearch() {
-  int beaconSearchIntensity = 0; // should be global
-  int beaconSearchTime = 0; // should be global
-  turnRobot(-20, 20);
+void updateEyes() {
+
+  unsigned int freq;
+
+  freq = sensorState[activeSensor][activeLED].frequency;
+  tone(LEDPin[activeLED], freq);
+  delayMicroseconds(sensorPulse);
+
+  for (byte i = 0; i < sensorCount; i++) {
+    // Read twice for consistency
+    sensorDetect[i] = !digitalRead(sensorPin[i]);
+    sensorDetect[i] |= !digitalRead(sensorPin[i]);
+  }
+  noTone(LEDPin[activeLED]);
+  lastSensorTime = micros();
+
+  // Avoid reading beacon too soon after IR pulse
+  lastBeaconTime = lastSensorTime;
+
+  for (byte i = 0; i < sensorCount; i++)
+    sensorState[i][activeLED].mark(freq, sensorDetect[i]);
+
+  if (++activeSensor == sensorCount) activeSensor = 0;
+  activeLED = 1 - activeLED;
 }
-
-/**
-* Used for testing movements
-**/
-void testBehavior() {
-  moveRobot(100);
-  //testMoveForward();
-  //testTurnLeft();
-}
-
-// ****************************
-
-void testMoveForward() {
-  int tRightTurn = 1100/4; // 16-th circle
-  int tLeftTurn = 1190/4; // 16-th circle
-
-  //turnRobot(100, 100); delay(2000);
-  //turnRobot(100, 100); delay(1000);
-  //turnRobot(-100, -100); delay(2000);
-
-  //turnRobot(100, 0); delay(tRightTurn); // 16th
-  //turnRobot(0, 100); delay(tLeftTurn); // 16th
-  //turnRobot(100, 0); delay(2*tRightTurn); // 8th
-  //turnRobot(0, 100); delay(2*tLeftTurn); // 8th
-
-  // pushing turn
-  turnRobot(100, 15); delay(2*tRightTurn); // 16th
-  //turnRobot(15, 100); delay(2*tLeftTurn); // 16th
-
-
-
-
-  moveRobot(0);
-  delay(2000);
-}
-
-void testTurnLeft() {
-  //
-}
-
 
 // Floor sensor
 void updateFloorSensor() {
+
+  // Safe zone detection MUST be cleared after use for decision-making!
   float floorEye = float(analogRead(floorSensorPin));
   floorAvg = floorAvg * decayRate + floorEye * (1 - decayRate);
-  floorDetect = floorAvg * detectThreshold > floorEye;
+  enterDetect |= floorAvg * detectEnterThreshold > floorEye;
+  exitDetect |= floorAvg * detectExitThreshold < floorEye;
 
-  Serial.print("Current: ");
-  Serial.println(floorEye);
-
-  Serial.print("Average: ");
-  Serial.println(floorAvg);
-
-  Serial.print("Detect: ");
-  Serial.println(floorDetect);
+  //  Serial.print("Current: ");
+  //  Serial.println(floorEye);
+  //  Serial.print("Average: ");
+  //  Serial.println(floorAvg);
+  //  Serial.print("Detect: ");
+  //  Serial.println(floorDetect);
 }
 
 
@@ -308,4 +298,12 @@ int convertSpeedR(int s) {
 
 int convertSpeedL(int s) {
   return 1500 + s * 2;
+}
+
+void beep(byte count) {
+  while (--count > 0) {
+    tone(speakerPin, 2000, 50);
+    delay(150);
+  }
+  tone(speakerPin, 2000, 50);
 }
