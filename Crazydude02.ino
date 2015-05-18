@@ -18,15 +18,21 @@ const byte motorLPin = 11;
 const byte motorRPin = 12;
 const byte redLEDPin = 13;
 
-// states for FSM
-// const byte S_SEARCH_ARENA = 1;
-// const byte S_EXIT_SAFEZONE = 2;
-// const byte S_AVOID_WALL = 3;
-// const byte S_GRAB_CYLINDER = 4;
-// const byte S_INVESTIGATE_OBJECT = 5;
-// const byte S_SEARCH_SAFEZONE_HEADING = 6;
-// const byte S_MOVE_TO_SAFEZONE = 7;
-// byte currentState = 1;
+
+/**
+ * Behaviour state machine
+ **/
+
+const byte S_SEARCH_ARENA = 1;
+const byte S_EXIT_SAFEZONE = 2;
+const byte S_AVOID_WALL = 3;
+const byte S_GRAB_CYLINDER = 4;
+const byte S_INVESTIGATE_OBJECT = 5;
+const byte S_SEARCH_SAFEZONE_HEADING = 6;
+const byte S_MOVE_TO_SAFEZONE = 7;
+byte currentState = 1;
+
+bool insideSafeZone = false;
 
 
 /**
@@ -133,8 +139,7 @@ void loop() {
   // Update FSM if ready
   if (millis() - actionStartTime > actionDuration) {
     // Make next decision
-    digitalWrite(redLEDPin, !digitalRead(redLEDPin));
-    setMotorState(M_STOP, 2000);
+    updateFSM();
   }
 }
 
@@ -234,6 +239,37 @@ void updateBeacon() {
   for (byte i = 0; i < sensorCount; i++)
     beaconDetect[i] |= !digitalRead(sensorPin[i]);
   beaconDetect[sensorCount] = !digitalRead(rearSensorPin);
+}
+
+void updateFSM() {
+  if (enterDetect) {
+    insideSafeZone = true;
+    enterDetect = false;
+  }
+  if (exitDetect) {
+    insideSafeZone = false;
+    exitDetect = false;
+  }
+
+  if (currentState == S_SEARCH_ARENA) {
+    // check if we need to go to another state
+    if (insideSafeZone) {
+      currentState = S_EXIT_SAFEZONE;
+    }
+    // if we see a cylinder, or are too close to a wall, enter the corresponding states
+
+    // otherwise, search
+    setMotorState(M_FORWARD, 2000);
+  } else if (currentState == S_EXIT_SAFEZONE) {
+
+  } else { // this shouldn't happen
+    setMotorState(M_STOP, 10000);
+    errorSignal();
+  }
+
+
+
+  digitalWrite(redLEDPin, !digitalRead(redLEDPin));
 }
 
 void updateEyes() {
