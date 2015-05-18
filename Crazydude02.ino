@@ -1,4 +1,4 @@
-#include <IRLogic.h>
+//#include <IRLogic.h>
 #include <Servo.h>
 
 // Constants
@@ -21,6 +21,7 @@ const int S_GRAB_CYLINDER = 4;
 const int S_INVESTIGATE_OBJECT = 5;
 const int S_SEARCH_SAFEZONE_HEADING = 6;
 const int S_MOVE_TO_SAFEZONE = 7;
+int currentState = 1;
 
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
@@ -31,7 +32,7 @@ const unsigned long sensorDelay = 300;     // microseconds ON time, full cycle i
 Servo servoLeft;
 Servo servoRight;
 
-IRLogic sensorState[sensorCount][LEDCount];
+//IRLogic sensorState[sensorCount][LEDCount];
 boolean sensorDetect[sensorCount];
 
 boolean carryingCylinder = false;
@@ -60,8 +61,9 @@ void setup() {
  **/
 void loop() {
 
-  readSensors();
-  moveRobot();
+  //readSensors();
+  //moveRobot();
+  testBehavior();
 
 
   // do delay unless execution has taken too much time
@@ -111,6 +113,7 @@ void debugPrint() {
   // Serial.print(sensorDetect[0]);
 }
 
+/*
 void readSensors() {
 
   unsigned int currentFrequency;
@@ -140,7 +143,9 @@ void readSensors() {
     sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
 
 }
+*/
 
+/*
 void moveRobot() {
   // if needed, we can check if the robot still holds the cylinder or not
 
@@ -183,6 +188,7 @@ void moveRobot() {
     // This should never happen
   }
 }
+*/
 
 void performArenaSearch() {
   moveRobot(80);
@@ -213,9 +219,29 @@ void performCylinderGrabbing() {
 }
 
 void performBeaconSearch() {
-  beaconSearchIntensity = 0; // should be global
-  beaconSearchTime = 0; // should be global
+  int beaconSearchIntensity = 0; // should be global
+  int beaconSearchTime = 0; // should be global
   turnRobot(-20, 20);
+}
+
+/**
+* Used for testing movements
+**/
+void testBehavior() {
+  testMoveForward();
+  testTurnLeft();
+}
+
+// ****************************
+
+void testMoveForward() {
+  moveRobot(50);
+  delayMicroseconds(1000);
+  moveRobot(0);
+}
+
+void testTurnLeft() {
+  //
 }
 
 
