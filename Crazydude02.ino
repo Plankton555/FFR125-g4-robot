@@ -13,6 +13,8 @@ const byte speakerPin = 2;
 const byte motorLPin = 11;
 const byte motorRPin = 12;
 
+const int floorSensorPin = A3;
+
 // states for FSM
 const int S_SEARCH_ARENA = 1;
 const int S_EXIT_SAFEZONE = 2;
@@ -22,6 +24,12 @@ const int S_INVESTIGATE_OBJECT = 5;
 const int S_SEARCH_SAFEZONE_HEADING = 6;
 const int S_MOVE_TO_SAFEZONE = 7;
 int currentState = 1;
+
+// Floor photodetector
+float floorAvg;
+const float decayRate = 1 - 1 / 20.0;
+const float detectThreshold = 0.6;
+bool floorDetect;
 
 // Parameters
 const unsigned long UPDATE_INTERVAL = 100; // milliseconds
@@ -63,13 +71,14 @@ void loop() {
 
   //readSensors();
   //moveRobot();
+  updateFloorSensor();
   testBehavior();
 
 
   // do delay unless execution has taken too much time
   unsigned long timeSpent = millis() - timeSincePrint;
   if (timeSpent < UPDATE_INTERVAL) {
-    //delay(UPDATE_INTERVAL - timeSpent);
+    delay(UPDATE_INTERVAL - timeSpent);
   } else {
     // overdue, return from function
 
@@ -102,13 +111,13 @@ void setupHardwareConnections() {
 
 void setupSensors() {
   // Sensor inertia can be changed from default value 10.0 here
-  // sensorState[0][0].setInertia(12.0); 
+  // sensorState[0][0].setInertia(12.0);
 }
 
 void debugPrint() {
   // Debug sensor readings
   // Serial.print(sensorState[0][0].getState());
-  
+
   // Debug beacon detection
   // Serial.print(sensorDetect[0]);
 }
@@ -123,21 +132,21 @@ void readSensors() {
       currentFrequency = sensorState[sensorIndex][LEDIndex].getFrequency();
       currentFrequency = constrain(currentFrequency, 38000, 42000);
       tone(LEDPin[LEDIndex], currentFrequency);
-      
+
       // Wait long enough to respond
       delayMicroseconds(sensorDelay);
-      
+
       for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
         sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
       noTone(LEDPin[LEDIndex]);
-      
+
       // Wait for duty cycle reasons
       delayMicroseconds(sensorDelay * 2);
       for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
         sensorState[writeIndex][LEDIndex].mark(currentFrequency, sensorDetect[writeIndex]);
     }
   }
-  
+
   // Beacon detection
   for (byte writeIndex = 0; writeIndex < sensorCount; writeIndex++)
     sensorDetect[writeIndex] = !digitalRead(sensorPin[writeIndex]);
@@ -228,8 +237,9 @@ void performBeaconSearch() {
 * Used for testing movements
 **/
 void testBehavior() {
-  testMoveForward();
-  testTurnLeft();
+  moveRobot(100);
+  //testMoveForward();
+  //testTurnLeft();
 }
 
 // ****************************
@@ -260,6 +270,23 @@ void testMoveForward() {
 
 void testTurnLeft() {
   //
+}
+
+
+// Floor sensor
+void updateFloorSensor() {
+  float floorEye = float(analogRead(floorSensorPin));
+  floorAvg = floorAvg * decayRate + floorEye * (1 - decayRate);
+  floorDetect = floorAvg * detectThreshold > floorEye;
+
+  Serial.print("Current: ");
+  Serial.println(floorEye);
+
+  Serial.print("Average: ");
+  Serial.println(floorAvg);
+
+  Serial.print("Detect: ");
+  Serial.println(floorDetect);
 }
 
 
