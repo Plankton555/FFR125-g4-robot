@@ -46,7 +46,7 @@ const byte S_MOVE_TO_SAFEZONE = 7;
 byte currentState = 1;
 
 int actionCounter = 0;
-bool insideSafeZone = false;
+//bool insideSafeZone = false;
 
 
 /**
@@ -289,6 +289,34 @@ void updateFSM() {
       } else {
         currentState = S_SEARCH_EVADE_RIGHT;
       }
+    } else {
+      if (captureDetect) {
+        currentState = S_SEARCH_CAPTURE;
+      } else if (cylinderDetect) {
+        if (leftZone && rightZone) {
+          // let sensors stabilize
+          currentState = S_SEARCH_PAUSE;
+        } else if (leftZone) {
+          currentState = S_SEARCH_FIND_LEFT;
+        } else if (rightZone) {
+          currentState = S_SEARCH_FIND_RIGHT;
+        } else { // neither
+          currentState = S_SEARCH_FORWARD;
+        }
+      }
+    }
+
+    // if entered safezone, back up
+    bool insideSafeZone = false;
+    if (enterDetect) {
+      insideSafeZone = true;
+    }
+    if (exitDetect) {
+      insideSafeZone = false;
+    }
+
+    if (insideSafeZone) {
+      currentState = S_SEARCH_LEAVE_BACK;
     }
 
 
@@ -327,6 +355,8 @@ void updateFSM() {
     setMotorState(M_LEFT_TURN, leftTurnDuration * 7);
     currentState = S_SEARCH_PAUSE;
   } else if (currentState == S_SEARCH_CAPTURE) {
+    setMotorstate(M_FORWARD, driveDuration);
+    currentState = 0; // muahaha
   } else if (currentState == S_SEARCH_FIND_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration);
     currentState = S_SEARCH_TURN_PAUSE;
