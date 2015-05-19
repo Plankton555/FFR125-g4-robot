@@ -23,7 +23,20 @@ const byte redLEDPin = 13;
  * Behaviour state machine
  **/
 
-const byte S_SEARCH_ARENA = 1;
+const byte S_SEARCH_ARENA = 100;
+const byte S_SEARCH_FORWARD = 101;
+const byte S_SEARCH_PAUSE = 102;
+const byte S_SEARCH_EVADE_LEFT = 103;
+const byte S_SEARCH_EVADE_RIGHT = 104;
+const byte S_SEARCH_EVADE_LEFT_PAUSE = 105;
+const byte S_SEARCH_EVADE_RIGHT_PAUSE = 106;
+const byte S_SEARCH_LEAVE_BACK = 107;
+const byte S_SEARCH_LEAVE_TURN = 108;
+const byte S_SEARCH_CAPTURE = 109;
+const byte S_SEARCH_FIND_LEFT = 110;
+const byte S_SEARCH_FIND_RIGHT = 111;
+const byte S_SEARCH_TURN_PAUSE = 112;
+
 const byte S_EXIT_SAFEZONE = 2;
 const byte S_AVOID_WALL = 3;
 const byte S_GRAB_CYLINDER = 4;
@@ -105,7 +118,7 @@ int dataOut = 0;
 
 const int leftTurnDuration =   297; // ms ~16th rotation
 const int rightTurnDuration =  275; // ms ~16th rotation
-const int driveDuration =     2000; // ms ~16 cm forward
+const int driveDuration =     2000; // ms ~33 cm forward
 const int restDuration =      3000; // ms
 
 /**
@@ -260,6 +273,38 @@ void updateBeacon() {
 }
 
 void updateFSM() {
+  bool resetFlags = true;
+  
+  if (currentState == S_SEARCH_ARENA) {
+  } else if (currentState == S_SEARCH_FORWARD) {
+    setMotorState(M_FORWARD, driveDuration);
+    currentState = S_SEARCH_PAUSE;
+  } else if (currentState == S_SEARCH_PAUSE) {
+    setMotorState(M_STOP, restDuration);
+    currentState = S_SEARCH_ARENA;
+  } else if (currentState == S_SEARCH_EVADE_LEFT) {
+  } else if (currentState == S_SEARCH_EVADE_RIGHT) {
+  } else if (currentState == S_SEARCH_EVADE_LEFT_PAUSE) {
+  } else if (currentState == S_SEARCH_EVADE_RIGHT_PAUSE) {
+  } else if (currentState == S_SEARCH_LEAVE_BACK) {
+    setMotorState(M_REVERSE, driveDuration);
+    currentState = S_SEARCH_LEAVE_TURN;
+  } else if (currentState == S_SEARCH_LEAVE_TURN) {
+    setMotorState(M_LEFT_TURN, leftTurnDuration * 7);
+    currentState = S_SEARCH_PAUSE;
+  } else if (currentState == S_SEARCH_CAPTURE) {
+  } else if (currentState == S_SEARCH_FIND_LEFT) {
+  } else if (currentState == S_SEARCH_FIND_RIGHT) {
+  } else if (currentState == S_SEARCH_TURN_PAUSE) {
+    setMotorState(M_STOP, restDuration);
+    currentState = S_SEARCH_PAUSE;
+  }
+
+
+
+
+
+  /*
   if (enterDetect) {
     insideSafeZone = true;
     enterDetect = false; // reset flag
@@ -319,7 +364,7 @@ void updateFSM() {
       setMotorState(6,righTurnDuration*4); //pushturn 90°
       setMotorState(1,driveDuration/2); //small step
     }
-    */
+
 
   } else if (currentState == S_MOVE_TO_SAFEZONE) {
 
@@ -334,7 +379,7 @@ void updateFSM() {
     //if(floorSensor){
     //  currentState=S_EXIT_SAFEZONE;
     //}
-    */
+
 
   } else { // this shouldn't happen
     setMotorState(M_STOP, 10000);
@@ -343,6 +388,7 @@ void updateFSM() {
 
 
   digitalWrite(redLEDPin, !digitalRead(redLEDPin));
+  */
 }
 
 void updateEyes() {
@@ -393,21 +439,21 @@ void analyzeIRSensors() {
   float p, b;
 
   b = 2 * sensorState[0][0].state + sensorState[1][0].state
-    + sensorState[2][0].state - sensorState[1][1].state
-    - 3 * sensorState[2][1].state;
+      + sensorState[2][0].state - sensorState[1][1].state
+      - 3 * sensorState[2][1].state;
   bias = biasDecay * bias + (1 - biasDecay) * b;
 
   // Nearer cylinder leads to wider variation in readings
   presence = presenceDecay * presence;
   p = sensorState[0][0].state - sensorState[0][1].state
-    + sensorState[1][0].state - sensorState[1][1].state
-    + sensorState[2][0].state - sensorState[2][1].state;
+      + sensorState[1][0].state - sensorState[1][1].state
+      + sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
   p = sensorState[0][0].state + sensorState[0][1].state
-    - sensorState[2][0].state - sensorState[2][1].state;
+      - sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
   p = sensorState[1][0].state + sensorState[1][1].state
-    - sensorState[2][0].state - sensorState[2][1].state;
+      - sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
 
   captureDetect |= presence > captureThreshold;
