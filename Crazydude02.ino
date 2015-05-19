@@ -28,7 +28,7 @@ const byte S_EXIT_SAFEZONE = 2;
 const byte S_AVOID_WALL = 3;
 const byte S_GRAB_CYLINDER = 4;
 const byte S_INVESTIGATE_OBJECT = 5;
-const byte S_SEARCH_SAFEZONE_HEADING = 6;
+const byte S_SEARCH_SAFEZONE = 6;
 const byte S_MOVE_TO_SAFEZONE = 7;
 byte currentState = 1;
 
@@ -285,11 +285,44 @@ void updateFSM() {
     // [M_RIGHT/LEFT_TURN, ??]
     // add a list lib (or implement using arrays)
 
+  } else if (currentState == S_SEARCH_SAFEZONE) {
+    
+    // *** pseudocode ***
+    /*
+    // situation where at least middle front sensor detects
+    if(sensorFront){
+      currentState=S_MOVE_TO_SAFEZONE;
+    } else if(onlySensorBack){//pushturn 180°
+      setMotorstate(6,righTurnDuration*8); 
+    } else if (mostlySensorLeft){
+      setMotorState(5,leftTurnDuration);
+    } else if (mostlySensorRight){
+      setMotorState(6,rightTurnDuration);
+    } else {//no detection or unclear position
+      setMotorState(6,righTurnDuration*4); //pushturn 90°
+      setMotorState(1,driveDuration/2); //small step
+    }
+    */
+
+  } else if (currentState == S_MOVE_TO_SAFEZONE) {
+
+    // *** pseudocode ***
+    /*
+    //move forward
+    setMotorstate(1,driveDuration);  
+    //test if signal is lost
+    if(!sensorFront) {
+      currentState=S_SEARCH_SAFEZONE_HEADING;
+    }  
+    //if(floorSensor){
+    //  currentState=S_EXIT_SAFEZONE;  
+    //}
+    */
+
   } else { // this shouldn't happen
     setMotorState(M_STOP, 10000);
     errorSignal();
   }
-
 
 
   digitalWrite(redLEDPin, !digitalRead(redLEDPin));
