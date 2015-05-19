@@ -82,6 +82,7 @@ boolean beaconDetect[sensorCount + 1];
 
 boolean captureDetect = false;
 boolean cylinderDetect = false;
+boolean wallDetect = false;
 boolean leftZone = false;
 boolean rightZone = false;
 
@@ -89,6 +90,7 @@ float presence = 0.0;
 float presenceDecay = 0.9;
 float captureThreshold = 15.0;
 float detectThreshold = 3.0;
+float wallThreshold = 3.0;
 float leftThreshold = -1.0;
 float rightThreshold = 1.0;
 float bias = 0.0;
@@ -301,14 +303,14 @@ void updateFSM() {
     // add a list lib (or implement using arrays)
 
   } else if (currentState == S_SEARCH_SAFEZONE) {
-    
+
     // *** pseudocode ***
     /*
     // situation where at least middle front sensor detects
     if(sensorFront){
       currentState=S_MOVE_TO_SAFEZONE;
     } else if(onlySensorBack){//pushturn 180°
-      setMotorstate(6,righTurnDuration*8); 
+      setMotorstate(6,righTurnDuration*8);
     } else if (mostlySensorLeft){
       setMotorState(5,leftTurnDuration);
     } else if (mostlySensorRight){
@@ -324,13 +326,13 @@ void updateFSM() {
     // *** pseudocode ***
     /*
     //move forward
-    setMotorstate(1,driveDuration);  
+    setMotorstate(1,driveDuration);
     //test if signal is lost
     if(!sensorFront) {
       currentState=S_SEARCH_SAFEZONE_HEADING;
-    }  
+    }
     //if(floorSensor){
-    //  currentState=S_EXIT_SAFEZONE;  
+    //  currentState=S_EXIT_SAFEZONE;
     //}
     */
 
@@ -387,7 +389,7 @@ void updateFloorSensor() {
 }
 
 void analyzeIRSensors() {
-  
+
   float p, b;
 
   b = 2 * sensorState[0][0].state + sensorState[1][0].state
@@ -407,12 +409,20 @@ void analyzeIRSensors() {
   p = sensorState[1][0].state + sensorState[1][1].state
     - sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
-   
+
   captureDetect |= presence > captureThreshold;
   cylinderDetect |= presence > detectThreshold;
   leftZone |= bias < leftThreshold;
   rightZone |= bias > rightThreshold;
 
+  // Wall detection
+  float f1, f2, fAvg;
+  f1 = sensorState[1][0].state;
+  f2 = sensorState[1][1].state;
+  fAvg = (f1 + f2) / 2.0;
+
+  // get position of wall;
+  wallDetect |= fAvg < wallThreshold;
 }
 
 
