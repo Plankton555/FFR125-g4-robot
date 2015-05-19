@@ -32,6 +32,7 @@ const byte S_SEARCH_SAFEZONE_HEADING = 6;
 const byte S_MOVE_TO_SAFEZONE = 7;
 byte currentState = 1;
 
+int actionCounter = 0;
 bool insideSafeZone = false;
 
 
@@ -244,24 +245,41 @@ void updateBeacon() {
 void updateFSM() {
   if (enterDetect) {
     insideSafeZone = true;
-    enterDetect = false;
+    enterDetect = false; // reset flag
   }
   if (exitDetect) {
     insideSafeZone = false;
-    exitDetect = false;
+    exitDetect = false; // reset flag
   }
 
   if (currentState == S_SEARCH_ARENA) {
     // check if we need to go to another state
     if (insideSafeZone) {
       currentState = S_EXIT_SAFEZONE;
+      actionCounter = 0; // reset counter to start from first action
     }
     // if we see a cylinder, or are too close to a wall, enter the corresponding states
 
     // otherwise, search
     setMotorState(M_FORWARD, 2000);
   } else if (currentState == S_EXIT_SAFEZONE) {
-
+    int actionSequence[][] = {
+      {M_REVERSE, 4000},
+      {M_RIGHT, rightTurnDuration*5} // May want to turn left sometimes???
+    };
+    if (actionCounter >= actionSequence.length) {
+      // action sequence finished, exit state
+      currentState = S_SEARCH_ARENA;
+      setMotorState(M_STOP, 100);
+    } else {
+      // otherwise, execute next action
+      setMotorState(actionSequence[actionCounter][1], actionSequence[actionCounter][2]);
+      actionCounter++;
+    }
+    // basically want a script here, a sequence of actions
+    // [M_REVERSE, 4000]
+    // [M_RIGHT/LEFT_TURN, ??]
+    // add a list lib (or implement using arrays)
   } else { // this shouldn't happen
     setMotorState(M_STOP, 10000);
     errorSignal();
