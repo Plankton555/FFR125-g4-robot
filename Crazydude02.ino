@@ -252,6 +252,7 @@ void updateFSM() {
     exitDetect = false; // reset flag
   }
 
+
   if (currentState == S_SEARCH_ARENA) {
     // check if we need to go to another state
     if (insideSafeZone) {
@@ -262,11 +263,14 @@ void updateFSM() {
 
     // otherwise, search
     setMotorState(M_FORWARD, 2000);
+
   } else if (currentState == S_EXIT_SAFEZONE) {
     int actionSequence[][] = {
       {M_REVERSE, 4000},
       {M_RIGHT, rightTurnDuration*5} // May want to turn left sometimes???
     };
+
+    // this could be done much more nicely using object-oriented design...
     if (actionCounter >= actionSequence.length) {
       // action sequence finished, exit state
       currentState = S_SEARCH_ARENA;
@@ -280,6 +284,7 @@ void updateFSM() {
     // [M_REVERSE, 4000]
     // [M_RIGHT/LEFT_TURN, ??]
     // add a list lib (or implement using arrays)
+
   } else { // this shouldn't happen
     setMotorState(M_STOP, 10000);
     errorSignal();
