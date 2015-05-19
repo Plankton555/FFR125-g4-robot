@@ -80,6 +80,21 @@ IRLogic sensorState[sensorCount][LEDCount];
 boolean sensorDetect[sensorCount];
 boolean beaconDetect[sensorCount + 1];
 
+boolean captureDetect = false;
+boolean cylinderDetect = false;
+boolean leftZone = false;
+boolean rightZone = false;
+
+float presence = 0.0;
+float presenceDecay = 0.9;
+float captureThreshold = 15.0;
+float detectThreshold = 3.0;
+float leftThreshold = -1.0;
+float rightThreshold = 1.0;
+float bias = 0.0;
+float biasDecay = 0.9;
+
+
 int dataOut = 0;
 
 /**
@@ -369,6 +384,35 @@ void updateFloorSensor() {
   //  Serial.println(floorAvg);
   //  Serial.print("Detect: ");
   //  Serial.println(floorDetect);
+}
+
+void analyzeIRSensors() {
+  
+  float p, b;
+
+  b = 2 * sensorState[0][0].state + sensorState[1][0].state
+    + sensorState[2][0].state - sensorState[1][1].state
+    - 3 * sensorState[2][1].state;
+  bias = biasDecay * bias + (1 - biasDecay) * b;
+
+  // Nearer cylinder leads to wider variation in readings
+  presence = presenceDecay * presence;
+  p = sensorState[0][0].state - sensorState[0][1].state
+    + sensorState[1][0].state - sensorState[1][1].state
+    + sensorState[2][0].state - sensorState[2][1].state;
+  presence += (1 - presenceDecay) * p * p;
+  p = sensorState[0][0].state + sensorState[0][1].state
+    - sensorState[2][0].state - sensorState[2][1].state;
+  presence += (1 - presenceDecay) * p * p;
+  p = sensorState[1][0].state + sensorState[1][1].state
+    - sensorState[2][0].state - sensorState[2][1].state;
+  presence += (1 - presenceDecay) * p * p;
+   
+  captureDetect |= presence > captureThreshold;
+  cylinderDetect |= presence > detectThreshold;
+  leftZone |= bias < leftThreshold;
+  rightZone |= bias > rightThreshold;
+
 }
 
 
