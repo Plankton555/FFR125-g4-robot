@@ -101,11 +101,11 @@ boolean rightZone = false;
 
 float presence = 0.0;
 float presenceDecay = 0.9;
-float captureThreshold = 15.0;
-float detectThreshold = 3.0;
-float wallThreshold = 3.0;
-float leftThreshold = -1.0;
-float rightThreshold = 1.0;
+float captureThreshold = 1.5;
+float detectThreshold = 0.3;
+float wallThreshold = 0.45;
+float leftThreshold = -0.1;
+float rightThreshold = 0.1;
 float bias = 0.0;
 float biasDecay = 0.9;
 
@@ -119,7 +119,7 @@ int dataOut = 0;
 const int leftTurnDuration =   297; // ms ~16th rotation
 const int rightTurnDuration =  275; // ms ~16th rotation
 const int driveDuration =     2000; // ms ~33 cm forward
-const int restDuration =      3000; // ms
+const int restDuration =      0500; // ms
 
 /**
  * Servos
@@ -143,6 +143,7 @@ void setup() {
 
   // Initial state
   setMotorState(M_STOP, 2000);
+  currentState = S_SEARCH_ARENA;
 }
 
 /**
@@ -157,6 +158,10 @@ void loop() {
       debugPrint();
       dataOut--;
     }
+
+    // Analze sensor data
+    analyzeIRSensors();
+    Serial.println(wallDetect);
 
     // Only update floor sensor when moving
     if (currentMotorState != M_STOP)
@@ -274,8 +279,19 @@ void updateBeacon() {
 
 void updateFSM() {
   bool resetFlags = true;
-  
+
   if (currentState == S_SEARCH_ARENA) {
+    currentState = S_SEARCH_FORWARD;
+    // If wall detected
+    if (wallDetect) {
+      if (bias > 0) {
+        currentState = S_SEARCH_EVADE_LEFT;
+      } else {
+        currentState = S_SEARCH_EVADE_RIGHT;
+      }
+    }
+
+
   } else if (currentState == S_SEARCH_FORWARD) {
     setMotorState(M_FORWARD, driveDuration);
     currentState = S_SEARCH_PAUSE;
@@ -283,9 +299,27 @@ void updateFSM() {
     setMotorState(M_STOP, restDuration);
     currentState = S_SEARCH_ARENA;
   } else if (currentState == S_SEARCH_EVADE_LEFT) {
+    setMotorState(M_LEFT_TURN, leftTurnDuration * 1);
+    currentState = S_SEARCH_EVADE_LEFT_PAUSE;
   } else if (currentState == S_SEARCH_EVADE_RIGHT) {
+    setMotorState(M_RIGHT_TURN, leftTurnDuration * 1);
+    currentState = S_SEARCH_EVADE_RIGHT_PAUSE;
   } else if (currentState == S_SEARCH_EVADE_LEFT_PAUSE) {
+    setMotorState(M_STOP, restDuration);
+    // If wall is still detected
+    if (wallDetect) {
+      currentState = S_SEARCH_EVADE_LEFT;
+    } else {
+      currentState = S_SEARCH_ARENA;
+    }
   } else if (currentState == S_SEARCH_EVADE_RIGHT_PAUSE) {
+    setMotorState(M_STOP, restDuration);
+    // If wall is still detected
+    if (wallDetect) {
+      currentState = S_SEARCH_EVADE_RIGHT;
+    } else {
+      currentState = S_SEARCH_ARENA;
+    }
   } else if (currentState == S_SEARCH_LEAVE_BACK) {
     setMotorState(M_REVERSE, driveDuration);
     currentState = S_SEARCH_LEAVE_TURN;
@@ -294,14 +328,21 @@ void updateFSM() {
     currentState = S_SEARCH_PAUSE;
   } else if (currentState == S_SEARCH_CAPTURE) {
   } else if (currentState == S_SEARCH_FIND_LEFT) {
+    setMotorState(M_LEFT_TURN, leftTurnDuration);
+    currentState = S_SEARCH_TURN_PAUSE;
   } else if (currentState == S_SEARCH_FIND_RIGHT) {
+    setMotorState(M_RIGHT_TURN, leftTurnDuration);
+    currentState = S_SEARCH_TURN_PAUSE;
   } else if (currentState == S_SEARCH_TURN_PAUSE) {
     setMotorState(M_STOP, restDuration);
     currentState = S_SEARCH_PAUSE;
   }
 
 
-
+  // Reset flags
+  if (true) {
+    wallDetect = false;
+  }
 
 
   /*
@@ -386,9 +427,9 @@ void updateFSM() {
     errorSignal();
   }
 
-
+ */
   digitalWrite(redLEDPin, !digitalRead(redLEDPin));
-  */
+
 }
 
 void updateEyes() {
@@ -465,8 +506,9 @@ void analyzeIRSensors() {
   float f1, f2, fAvg;
   f1 = sensorState[1][0].state;
   f2 = sensorState[1][1].state;
-  fAvg = (f1 + f2) / 2.0;
+  fAvg = (f1 + f2 + min(f1, f2)) / 3.0;
 
+  Serial.println(fAvg);
   // get position of wall;
   wallDetect |= fAvg < wallThreshold;
 }
