@@ -26,6 +26,7 @@ const byte redLEDPin = 13;
 const byte S_SEARCH_ARENA = 100;
 const byte S_SEARCH_FORWARD = 101;
 const byte S_SEARCH_PAUSE = 102;
+const byte S_SEARCH_WALL_DETECTED = 113;
 const byte S_SEARCH_EVADE_LEFT = 103;
 const byte S_SEARCH_EVADE_RIGHT = 104;
 const byte S_SEARCH_EVADE_LEFT_PAUSE = 105;
@@ -37,6 +38,17 @@ const byte S_SEARCH_FIND_LEFT = 110;
 const byte S_SEARCH_FIND_RIGHT = 111;
 const byte S_SEARCH_TURN_PAUSE = 112;
 
+const byte S_RETURN_START = 200;
+const byte S_RETURN_FORWARD = 201;
+const byte S_RETURN_TURN_LEFT = 202;
+const byte S_RETURN_TURN_RIGHT = 209;
+const byte S_RETURN_WALL_DETECTED = 203;
+const byte S_RETURN_EVADE_LEFT = 204;
+const byte S_RETURN_EVADE_RIGHT = 205;
+const byte S_RETURN_EVADE_LEFT_PAUSE = 206;
+const byte S_RETURN_EVADE_RIGHT_PAUSE = 207;
+// const byte S_RETURN_FINISHED = 208;
+
 const byte S_EXIT_SAFEZONE = 2;
 const byte S_AVOID_WALL = 3;
 const byte S_GRAB_CYLINDER = 4;
@@ -47,6 +59,10 @@ byte currentState = 1;
 
 int actionCounter = 0;
 //bool insideSafeZone = false;
+
+// -1: left, +1: right
+byte lastReturnMove = 1;
+bool lastReturnMoveWasForward = false;
 
 
 /**
@@ -143,7 +159,8 @@ void setup() {
 
   // Initial state
   setMotorState(M_STOP, 2000);
-  currentState = S_SEARCH_ARENA;
+
+  currentState = S_RETURN_START;//0; //S_SEARCH_ARENA;
 }
 
 /**
@@ -161,7 +178,7 @@ void loop() {
 
     // Analze sensor data
     analyzeIRSensors();
-    Serial.println(wallDetect);
+    //Serial.println(wallDetect);
 
     // Only update floor sensor when moving
     if (currentMotorState != M_STOP)
@@ -284,11 +301,7 @@ void updateFSM() {
     currentState = S_SEARCH_FORWARD;
     // If wall detected
     if (wallDetect) {
-      if (bias > 0) {
-        currentState = S_SEARCH_EVADE_LEFT;
-      } else {
-        currentState = S_SEARCH_EVADE_RIGHT;
-      }
+      currentState = S_SEARCH_WALL_DETECTED;
     } else {
       if (captureDetect) {
         currentState = S_SEARCH_CAPTURE;
@@ -326,6 +339,13 @@ void updateFSM() {
   } else if (currentState == S_SEARCH_PAUSE) {
     setMotorState(M_STOP, restDuration);
     currentState = S_SEARCH_ARENA;
+  } else if (currentState == S_SEARCH_WALL_DETECTED) {
+    setMotorState(M_REVERSE, driveDuration / 4);
+    if (bias > 0) {
+      currentState = S_SEARCH_EVADE_LEFT;
+    } else {
+      currentState = S_SEARCH_EVADE_RIGHT;
+    }
   } else if (currentState == S_SEARCH_EVADE_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration * 1);
     currentState = S_SEARCH_EVADE_LEFT_PAUSE;
@@ -369,95 +389,79 @@ void updateFSM() {
   }
 
 
+
+
+
+
+
+
+
+
+  // Return states
+  else if (currentState == S_RETURN_START) {
+    Serial.println("RETURN START");
+    // Beacon seen during turn
+    if (beaconDetect[0]) {
+      currentState = S_RETURN_FORWARD;
+    } else {
+      if (lastReturnMoveWasForward) {
+        if (lastReturnMove == 1) {
+          currentState = S_RETURN_TURN_LEFT;
+        } else {
+          currentState = S_RETURN_TURN_RIGHT;
+        }
+      } else {
+        currentState = S_RETURN_TURN_LEFT;
+      }
+    }
+
+  } else if (currentState == S_RETURN_FORWARD) {
+
+    Serial.println("RETURN FORWARD");
+    setMotorState(M_FORWARD, driveDuration / 2);
+    currentState = S_RETURN_START;
+    lastReturnMoveWasForward = true;
+  } else if (currentState == S_RETURN_TURN_LEFT) {
+
+    Serial.println("RETURN LEFT");
+    lastReturnMove = -1;
+    setMotorState(M_LEFT_PUSH, leftTurnDuration * 2);
+    currentState = S_RETURN_START;
+    lastReturnMoveWasForward = false;
+  } else if (currentState == S_RETURN_TURN_RIGHT) {
+
+    Serial.println("RETURN RIGHT");
+    lastReturnMove = 1;
+    setMotorState(M_RIGHT_PUSH, leftTurnDuration * 2);
+    currentState = S_RETURN_START;
+    lastReturnMoveWasForward = false;
+  }
+  // } else if (currentState == S_RETURN_WALL_DETECTED) {
+  // } else if (currentState == S_RETURN_EVADE_LEFT) {
+  // } else if (currentState == S_RETURN_EVADE_RIGHT) {
+  // } else if (currentState == S_RETURN_EVADE_LEFT_PAUSE) {
+  // } else if (currentState == S_RETURN_EVADE_RIGHT_PAUSE) {
+  // }
+  else {
+    // DEBUG STATE
+    setMotorState(M_STOP, 200);
+
+
+    Serial.println(beaconDetect[1]);
+    Serial.println(beaconDetect[3]);
+    Serial.println();
+  }
+
   // Reset flags
   if (true) {
     wallDetect = false;
+    beaconDetect[0] = false;
+    beaconDetect[1] = false;
+    beaconDetect[2] = false;
+    beaconDetect[3] = false;
   }
 
-
-  /*
-  if (enterDetect) {
-    insideSafeZone = true;
-    enterDetect = false; // reset flag
-  }
-  if (exitDetect) {
-    insideSafeZone = false;
-    exitDetect = false; // reset flag
-  }
-
-
-  if (currentState == S_SEARCH_ARENA) {
-    // check if we need to go to another state
-    if (insideSafeZone) {
-      currentState = S_EXIT_SAFEZONE;
-      actionCounter = 0; // reset counter to start from first action
-    }
-    // if we see a cylinder, or are too close to a wall, enter the corresponding states
-
-    // otherwise, search
-    setMotorState(M_FORWARD, 2000);
-
-  } else if (currentState == S_EXIT_SAFEZONE) {
-    int actionSequence[][] = {
-      {M_REVERSE, 4000},
-      {M_RIGHT, rightTurnDuration*5} // May want to turn left sometimes???
-    };
-
-    // this could be done much more nicely using object-oriented design...
-    if (actionCounter >= actionSequence.length) {
-      // action sequence finished, exit state
-      currentState = S_SEARCH_ARENA;
-      setMotorState(M_STOP, 100);
-    } else {
-      // otherwise, execute next action
-      setMotorState(actionSequence[actionCounter][1], actionSequence[actionCounter][2]);
-      actionCounter++;
-    }
-    // basically want a script here, a sequence of actions
-    // [M_REVERSE, 4000]
-    // [M_RIGHT/LEFT_TURN, ??]
-    // add a list lib (or implement using arrays)
-
-  } else if (currentState == S_SEARCH_SAFEZONE) {
-
-    // *** pseudocode ***
-    /*
-    // situation where at least middle front sensor detects
-    if(sensorFront){
-      currentState=S_MOVE_TO_SAFEZONE;
-    } else if(onlySensorBack){//pushturn 180°
-      setMotorstate(6,righTurnDuration*8);
-    } else if (mostlySensorLeft){
-      setMotorState(5,leftTurnDuration);
-    } else if (mostlySensorRight){
-      setMotorState(6,rightTurnDuration);
-    } else {//no detection or unclear position
-      setMotorState(6,righTurnDuration*4); //pushturn 90°
-      setMotorState(1,driveDuration/2); //small step
-    }
-
-
-  } else if (currentState == S_MOVE_TO_SAFEZONE) {
-
-    // *** pseudocode ***
-    /*
-    //move forward
-    setMotorstate(1,driveDuration);
-    //test if signal is lost
-    if(!sensorFront) {
-      currentState=S_SEARCH_SAFEZONE_HEADING;
-    }
-    //if(floorSensor){
-    //  currentState=S_EXIT_SAFEZONE;
-    //}
-
-
-  } else { // this shouldn't happen
-    setMotorState(M_STOP, 10000);
-    errorSignal();
-  }
-
- */
+  // State change indicator
   digitalWrite(redLEDPin, !digitalRead(redLEDPin));
 
 }
@@ -538,7 +542,7 @@ void analyzeIRSensors() {
   f2 = sensorState[1][1].state;
   fAvg = (f1 + f2 + min(f1, f2)) / 3.0;
 
-  Serial.println(fAvg);
+  // Serial.println(fAvg);
   // get position of wall;
   wallDetect |= fAvg < wallThreshold;
 }
