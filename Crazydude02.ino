@@ -86,8 +86,8 @@ unsigned long actionDuration;
 
 float floorAvg;
 const float decayRate = 1 - 1 / 20.0;
-const float detectEnterThreshold = 0.6;
-const float detectExitThreshold = 1.5;
+const float detectEnterThreshold = 0.4;
+const float detectExitThreshold = 1.8;
 bool enterDetect;
 bool exitDetect;
 
@@ -160,7 +160,7 @@ void setup() {
   // Initial state
   setMotorState(M_STOP, 2000);
 
-  currentState = S_RETURN_START;//0; //S_SEARCH_ARENA;
+  currentState = S_SEARCH_ARENA;//S_RETURN_START;//0; //S_SEARCH_ARENA;
 }
 
 /**
@@ -279,10 +279,10 @@ void setMotorState(byte newMotorState, unsigned long duration) {
     turnRobot(100, 0);
   }
   else if (newMotorState == M_LEFT_PUSH) {
-    turnRobot(15, 100);
+    turnRobot(5, 100);
   }
   else if (newMotorState == M_RIGHT_PUSH) {
-    turnRobot(100, 15);
+    turnRobot(100, 5);
   }
   else errorSignal();
 }
@@ -375,7 +375,7 @@ void updateFSM() {
     setMotorState(M_LEFT_TURN, leftTurnDuration * 7);
     currentState = S_SEARCH_PAUSE;
   } else if (currentState == S_SEARCH_CAPTURE) {
-    setMotorstate(M_FORWARD, driveDuration);
+    setMotorState(M_FORWARD, driveDuration);
     currentState = S_RETURN_START;
   } else if (currentState == S_SEARCH_FIND_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration);
@@ -399,7 +399,13 @@ void updateFSM() {
 
   // Return states
   else if (currentState == S_RETURN_START) {
-    Serial.println("RETURN START");
+    Serial.println(enterDetect);
+
+
+    if (enterDetect) {
+      currentState = S_SEARCH_LEAVE_BACK;
+    } else
+
     // Beacon seen during turn
     if (beaconDetect[0]) {
       currentState = S_RETURN_FORWARD;
@@ -448,7 +454,6 @@ void updateFSM() {
 
 
     Serial.println(beaconDetect[1]);
-    Serial.println(beaconDetect[3]);
     Serial.println();
   }
 
@@ -459,6 +464,12 @@ void updateFSM() {
     beaconDetect[1] = false;
     beaconDetect[2] = false;
     beaconDetect[3] = false;
+    enterDetect = false;
+    exitDetect = false;
+    captureDetect = false;
+    cylinderDetect = false;
+    leftZone = false;
+    rightZone = false;
   }
 
   // State change indicator
@@ -501,12 +512,14 @@ void updateFloorSensor() {
   enterDetect |= floorAvg * detectEnterThreshold > floorEye;
   exitDetect |= floorAvg * detectExitThreshold < floorEye;
 
-  //  Serial.print("Current: ");
-  //  Serial.println(floorEye);
-  //  Serial.print("Average: ");
-  //  Serial.println(floorAvg);
-  //  Serial.print("Detect: ");
-  //  Serial.println(floorDetect);
+   Serial.print("Current: ");
+   Serial.println(floorEye);
+   Serial.print("Average: ");
+   Serial.println(floorAvg);
+   Serial.print("DetectEnter: ");
+   Serial.println(enterDetect);
+   Serial.print("DetectExit: ");
+   Serial.println(exitDetect);
 }
 
 void analyzeIRSensors() {
