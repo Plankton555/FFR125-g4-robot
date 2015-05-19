@@ -376,7 +376,7 @@ void updateFSM() {
     currentState = S_SEARCH_PAUSE;
   } else if (currentState == S_SEARCH_CAPTURE) {
     setMotorstate(M_FORWARD, driveDuration);
-    currentState = 0; // muahaha
+    currentState = S_RETURN_START;
   } else if (currentState == S_SEARCH_FIND_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration);
     currentState = S_SEARCH_TURN_PAUSE;
