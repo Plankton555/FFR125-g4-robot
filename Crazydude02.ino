@@ -63,6 +63,8 @@ int actionCounter = 0;
 // -1: left, +1: right
 byte lastReturnMove = 1;
 bool lastReturnMoveWasForward = false;
+byte returnTurnCount = 0;
+const byte returnTurnCountThreshold = 20;
 
 
 /**
@@ -408,27 +410,32 @@ void updateFSM() {
 
     if (enterDetect) {
       currentState = S_SEARCH_LEAVE_BACK;
-    } else
-
-    // Beacon seen during turn
-    if (beaconDetect[0]) {
+    } else if (beaconDetect[0]) {
       currentState = S_RETURN_FORWARD;
     } else {
+      //Trying to keep into cone of beacon
       if (lastReturnMoveWasForward) {
         if (lastReturnMove == 1) {
           currentState = S_RETURN_TURN_LEFT;
         } else {
           currentState = S_RETURN_TURN_RIGHT;
         }
+      //Searching beacon
       } else {
-        currentState = S_RETURN_TURN_LEFT;
+        if (returnTurnCount > returnTurnCountThreshold) {
+          currentState = S_RETURN_FORWARD;
+          returnTurnCount = 0;
+        } else {
+          returnTurnCount++;
+          currentState = S_RETURN_TURN_LEFT;
+        }
       }
     }
 
   } else if (currentState == S_RETURN_FORWARD) {
 
     Serial.println("RETURN FORWARD");
-    setMotorState(M_FORWARD, driveDuration / 2);
+    setMotorState(M_FORWARD, driveDuration);// / 2);
     currentState = S_RETURN_START;
     lastReturnMoveWasForward = true;
   } else if (currentState == S_RETURN_TURN_LEFT) {
