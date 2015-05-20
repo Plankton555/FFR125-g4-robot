@@ -117,11 +117,12 @@ boolean rightZone = false;
 
 float presence = 0.0;
 float presenceDecay = 0.9;
-float captureThreshold = 1.5;
-float detectThreshold = 0.3;
+float captureThreshold = 0.5;
+float detectThreshold = 0.05;
 float wallThreshold = 0.45;
 float leftThreshold = -0.1;
 float rightThreshold = 0.1;
+float upperThreshold = 0.75;
 float bias = 0.0;
 float biasDecay = 0.9;
 
@@ -135,7 +136,7 @@ int dataOut = 0;
 const int leftTurnDuration =   297; // ms ~16th rotation
 const int rightTurnDuration =  275; // ms ~16th rotation
 const int driveDuration =     2000; // ms ~33 cm forward
-const int restDuration =      0500; // ms
+const int restDuration =      1000; // ms
 
 /**
  * Servos
@@ -160,7 +161,7 @@ void setup() {
   // Initial state
   setMotorState(M_STOP, 2000);
 
-  currentState = S_SEARCH_ARENA;//S_RETURN_START;//0; //S_SEARCH_ARENA;
+  currentState = S_SEARCH_PAUSE;//S_RETURN_START;//0; //S_SEARCH_ARENA;
 }
 
 /**
@@ -295,7 +296,7 @@ void updateBeacon() {
 }
 
 void updateFSM() {
-  bool resetFlags = true;
+  bool resetCapture = false;
 
   if (currentState == S_SEARCH_ARENA) {
     currentState = S_SEARCH_FORWARD;
@@ -331,7 +332,7 @@ void updateFSM() {
     if (insideSafeZone) {
       currentState = S_SEARCH_LEAVE_BACK;
     }
-
+    resetCapture = true;
 
   } else if (currentState == S_SEARCH_FORWARD) {
     setMotorState(M_FORWARD, driveDuration);
@@ -369,14 +370,17 @@ void updateFSM() {
       currentState = S_SEARCH_ARENA;
     }
   } else if (currentState == S_SEARCH_LEAVE_BACK) {
+    digitalWrite(redLEDPin, LOW);
     setMotorState(M_REVERSE, driveDuration);
     currentState = S_SEARCH_LEAVE_TURN;
   } else if (currentState == S_SEARCH_LEAVE_TURN) {
+    resetCapture = true;
     setMotorState(M_LEFT_TURN, leftTurnDuration * 7);
     currentState = S_SEARCH_PAUSE;
   } else if (currentState == S_SEARCH_CAPTURE) {
     setMotorState(M_FORWARD, driveDuration);
     currentState = S_RETURN_START;
+    digitalWrite(redLEDPin, HIGH);
   } else if (currentState == S_SEARCH_FIND_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration);
     currentState = S_SEARCH_TURN_PAUSE;
@@ -384,7 +388,7 @@ void updateFSM() {
     setMotorState(M_RIGHT_TURN, leftTurnDuration);
     currentState = S_SEARCH_TURN_PAUSE;
   } else if (currentState == S_SEARCH_TURN_PAUSE) {
-    setMotorState(M_STOP, restDuration);
+    setMotorState(M_STOP, restDuration * 2);
     currentState = S_SEARCH_PAUSE;
   }
 
@@ -452,10 +456,27 @@ void updateFSM() {
     // DEBUG STATE
     setMotorState(M_STOP, 200);
 
-
-    Serial.println(beaconDetect[1]);
+    Serial.print(leftZone);
+    Serial.print(cylinderDetect);
+    Serial.print(rightZone);
+    Serial.print('\t');
+    Serial.println(bias);
+    Serial.print(' ');
+    Serial.print(captureDetect);
+    Serial.print('\t');
+    Serial.println(presence);
     Serial.println();
   }
+    Serial.print(leftZone);
+    Serial.print(cylinderDetect);
+    Serial.print(rightZone);
+    Serial.print('\t');
+    Serial.println(bias);
+    Serial.print(' ');
+    Serial.print(captureDetect);
+    Serial.print('\t');
+    Serial.println(presence);
+    Serial.println();
 
   // Reset flags
   if (true) {
@@ -466,14 +487,15 @@ void updateFSM() {
     beaconDetect[3] = false;
     enterDetect = false;
     exitDetect = false;
-    captureDetect = false;
     cylinderDetect = false;
     leftZone = false;
     rightZone = false;
   }
+  if (resetCapture)
+    captureDetect = false;
 
   // State change indicator
-  digitalWrite(redLEDPin, !digitalRead(redLEDPin));
+  //digitalWrite(redLEDPin, !digitalRead(redLEDPin));
 
 }
 
@@ -512,14 +534,14 @@ void updateFloorSensor() {
   enterDetect |= floorAvg * detectEnterThreshold > floorEye;
   exitDetect |= floorAvg * detectExitThreshold < floorEye;
 
-   Serial.print("Current: ");
-   Serial.println(floorEye);
-   Serial.print("Average: ");
-   Serial.println(floorAvg);
-   Serial.print("DetectEnter: ");
-   Serial.println(enterDetect);
-   Serial.print("DetectExit: ");
-   Serial.println(exitDetect);
+//   Serial.print("Current: ");
+//   Serial.println(floorEye);
+//   Serial.print("Average: ");
+//   Serial.println(floorAvg);
+//   Serial.print("DetectEnter: ");
+//   Serial.println(enterDetect);
+//   Serial.print("DetectExit: ");
+//   Serial.println(exitDetect);
 }
 
 void analyzeIRSensors() {
@@ -547,8 +569,8 @@ void analyzeIRSensors() {
   captureDetect |= presence > captureThreshold;
   cylinderDetect |= presence > detectThreshold;
   leftZone |= bias < leftThreshold;
-  rightZone |= bias > rightThreshold;
-
+  rightZone |= (bias > rightThreshold) & (bias < upperThreshold);
+  captureDetect |= leftZone & rightZone;
   // Wall detection
   float f1, f2, fAvg;
   f1 = sensorState[1][0].state;
