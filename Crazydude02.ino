@@ -40,6 +40,7 @@ const byte S_SEARCH_TURN_PAUSE = 112;
 
 const byte S_RETURN_START = 200;
 const byte S_RETURN_FORWARD = 201;
+const byte S_RETURN_FORWARD_SEARCH = 210;
 const byte S_RETURN_TURN_LEFT = 202;
 const byte S_RETURN_TURN_RIGHT = 209;
 const byte S_RETURN_WALL_DETECTED = 203;
@@ -350,10 +351,10 @@ void updateFSM() {
       currentState = S_SEARCH_EVADE_RIGHT;
     }
   } else if (currentState == S_SEARCH_EVADE_LEFT) {
-    setMotorState(M_LEFT_TURN, leftTurnDuration * 1);
+    setMotorState(M_LEFT_TURN, leftTurnDuration * 3);
     currentState = S_SEARCH_EVADE_LEFT_PAUSE;
   } else if (currentState == S_SEARCH_EVADE_RIGHT) {
-    setMotorState(M_RIGHT_TURN, leftTurnDuration * 1);
+    setMotorState(M_RIGHT_TURN, leftTurnDuration * 3);
     currentState = S_SEARCH_EVADE_RIGHT_PAUSE;
   } else if (currentState == S_SEARCH_EVADE_LEFT_PAUSE) {
     setMotorState(M_STOP, restDuration);
@@ -406,11 +407,12 @@ void updateFSM() {
   // Return states
   else if (currentState == S_RETURN_START) {
     Serial.println(enterDetect);
+    Serial.println(beaconDetect[1]);
 
 
     if (enterDetect) {
       currentState = S_SEARCH_LEAVE_BACK;
-    } else if (beaconDetect[0]) {
+    } else if (beaconDetect[1]) {
       currentState = S_RETURN_FORWARD;
     } else {
       //Trying to keep into cone of beacon
@@ -423,7 +425,7 @@ void updateFSM() {
       //Searching beacon
       } else {
         if (returnTurnCount > returnTurnCountThreshold) {
-          currentState = S_RETURN_FORWARD;
+          currentState = S_RETURN_FORWARD_SEARCH;
           returnTurnCount = 0;
         } else {
           returnTurnCount++;
@@ -431,7 +433,9 @@ void updateFSM() {
         }
       }
     }
-
+  } else if (currentState == S_RETURN_FORWARD_SEARCH) {
+    setMotorState(M_FORWARD, driveDuration *3);
+    currentState = S_RETURN_START;
   } else if (currentState == S_RETURN_FORWARD) {
 
     Serial.println("RETURN FORWARD");
@@ -442,14 +446,14 @@ void updateFSM() {
 
     Serial.println("RETURN LEFT");
     lastReturnMove = -1;
-    setMotorState(M_LEFT_PUSH, leftTurnDuration * 2);
+    setMotorState(M_LEFT_PUSH, leftTurnDuration * 4);
     currentState = S_RETURN_START;
     lastReturnMoveWasForward = false;
   } else if (currentState == S_RETURN_TURN_RIGHT) {
 
     Serial.println("RETURN RIGHT");
     lastReturnMove = 1;
-    setMotorState(M_RIGHT_PUSH, leftTurnDuration * 2);
+    setMotorState(M_RIGHT_PUSH, leftTurnDuration * 4);
     currentState = S_RETURN_START;
     lastReturnMoveWasForward = false;
   }
