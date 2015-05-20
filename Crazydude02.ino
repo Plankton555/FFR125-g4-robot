@@ -65,7 +65,7 @@ int actionCounter = 0;
 byte lastReturnMove = 1;
 bool lastReturnMoveWasForward = false;
 byte returnTurnCount = 0;
-const byte returnTurnCountThreshold = 20;
+const byte returnTurnCountThreshold = 5;
 
 
 /**
@@ -120,12 +120,12 @@ boolean rightZone = false;
 
 float presence = 0.0;
 float presenceDecay = 0.9;
-float captureThreshold = 0.5;
-float detectThreshold = 0.05;
+float captureThreshold = 0.06;
+float detectThreshold = 0.02;
 float wallThreshold = 0.45;
-float leftThreshold = -0.1;
-float rightThreshold = 0.1;
-float upperThreshold = 0.75;
+float leftThreshold = 0.01;
+float rightThreshold = 0.25;
+float upperThreshold = 0.4;
 float bias = 0.0;
 float biasDecay = 0.9;
 
@@ -384,6 +384,8 @@ void updateFSM() {
     setMotorState(M_FORWARD, driveDuration);
     currentState = S_RETURN_START;
     digitalWrite(redLEDPin, HIGH);
+    if (wallDetect)
+      currentState = S_SEARCH_WALL_DETECTED;
   } else if (currentState == S_SEARCH_FIND_LEFT) {
     setMotorState(M_LEFT_TURN, leftTurnDuration);
     currentState = S_SEARCH_TURN_PAUSE;
@@ -467,16 +469,7 @@ void updateFSM() {
     // DEBUG STATE
     setMotorState(M_STOP, 200);
 
-    Serial.print(leftZone);
-    Serial.print(cylinderDetect);
-    Serial.print(rightZone);
-    Serial.print('\t');
-    Serial.println(bias);
-    Serial.print(' ');
-    Serial.print(captureDetect);
-    Serial.print('\t');
-    Serial.println(presence);
-    Serial.println();
+    resetCapture = true;
   }
     Serial.print(leftZone);
     Serial.print(cylinderDetect);
@@ -561,15 +554,16 @@ void analyzeIRSensors() {
 
   b = 2 * sensorState[0][0].state + sensorState[1][0].state
       + sensorState[2][0].state - sensorState[1][1].state
-      - 3 * sensorState[2][1].state;
+      - 3 * sensorState[2][1].state;// - sensorState[0][1].state;
   bias = biasDecay * bias + (1 - biasDecay) * b;
 
   // Nearer cylinder leads to wider variation in readings
   presence = presenceDecay * presence;
-  p = sensorState[0][0].state - sensorState[0][1].state
-      + sensorState[1][0].state - sensorState[1][1].state
-      + sensorState[2][0].state - sensorState[2][1].state;
+  p = sensorState[0][0].state + sensorState[0][1].state
+      - sensorState[1][0].state - sensorState[1][1].state;
+  //    + sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
+  
   p = sensorState[0][0].state + sensorState[0][1].state
       - sensorState[2][0].state - sensorState[2][1].state;
   presence += (1 - presenceDecay) * p * p;
